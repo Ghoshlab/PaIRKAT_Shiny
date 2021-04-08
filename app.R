@@ -652,12 +652,17 @@ server <- function(input, output, session) {
       
       validate(
         need(is.numeric(clinDat()[[input$Y]]),"Outcome variable should be numeric"),
-        need(input$X > 0, "Please select at least 1 clinical covariate. Unadjusted models coming soon."),
+        # need(input$X > 0, "Please select at least 1 clinical covariate. Unadjusted models coming soon."),
         need(!(input$Y %in% input$X), "The outcome should not be included in covariates")
       )
       
-      .formula <- suppressWarnings(formula_fun(input$X))
-      mm <- model.matrix(.formula, data = clinDat())
+      if(is.null(input$X)){
+        .formula <- '~ 1'
+        mm <- matrix(1, nrow = nrow(clinDat()))
+      } else{
+        .formula <- suppressWarnings(formula_fun(input$X))
+        mm <- model.matrix(.formula, data = clinDat())
+      }
       
       npath <- nrow(networks()$pdat$testPaths)
       pKat.rslt <- data.frame(Pathway = character(npath),
