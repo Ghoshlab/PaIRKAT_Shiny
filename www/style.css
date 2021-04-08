@@ -1,0 +1,11 @@
+html { 
+	height: 90vh; 
+	overflow-y: auto; 
+}
+
+.shiny-notification {
+	position: fixed; 
+	bottom: 3% ;
+	left: 33%; 
+	width: 33%
+}

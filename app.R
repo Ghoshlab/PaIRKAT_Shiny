@@ -47,7 +47,9 @@ source('helpers.R')
 # Define UI for application that draws a histogram
 ui <- function(request) {
   fluidPage(
-    tags$head(tags$style(".shiny-notification {position: fixed; bottom: 3% ;left: 33%; width: 33%")),
+    tags$head(
+      tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
+    ),
     
     navbarPage("PaIRKAT",
                tabPanel("About",
@@ -78,6 +80,15 @@ ui <- function(request) {
                             tags$li("Plot Builder: This flexible tool allows you to make plots using any of the information entered into the application or derived from its functions.")
                           ),
                         ),
+                        h3("Data Cleaning Guide"),
+                        p("PaIRKAT requires clean data to function properly. Uploaded files should be in the .csv file format and should abide by the following criteria:"),
+                        tags$ul(
+                          tags$li("Rows or columns with missing data should be removed or imputed"),
+                          tags$li("Remove any special characters"),
+                          tags$li("Remove duplicate rows or column names"),
+                          tags$li("Variables names should be in the first row of the spreadsheet with no leading empty rows prior to the start of the data"),
+                          tags$li("Categorical variables should be converted to one-hot-encodings (aka dummy variables) with 1 or 0 representing inclusion or non-inclusion in a group respectively"),
+                        ),
                         h3("Methods"),
                         p("PaIRKAT is a tool for improving testing power on high dimensional data by including graph topography in the kernel machine regression setting. Studies on high dimensional data can struggle 
                           to include the complex relationships between variables. The semi-parametric kernel machine regression model is a powerful tool for capturing these types of relationships. 
@@ -97,15 +108,15 @@ ui <- function(request) {
                           sidebarPanel(h4("Clinical Data"),
                                        h6("Clinical variables associated with trial's subjects.
                    Subject IDs should be the first column."),
-                                       fileInput("clin", h6("File Select")),
+                                       fileInput("clin", h6("File Select"), accept = c(".csv")),
                                        
                                        h4("Metabolome Data"),
                                        h6("Metabolome data of the trial. Subject IDs should be the
                    first column. Metabolites should be normalized and imputed."),
-                                       fileInput("metab", h6("File Select")),
+                                       fileInput("metab", h6("File Select"), accept = c(".csv")),
                                        
                                        h4("Metabolome Meta Data"),
-                                       fileInput("pathway", h6("File Select")),
+                                       fileInput("pathway", h6("File Select"), accept = c(".csv")),
                                        
                                        h5("Optional"),
                                        h4("PaIRKAT Session"),
@@ -402,7 +413,7 @@ ui <- function(request) {
                )
                
     )
-  )
+  ,style = "max-height: 100vh; overflow-y: auto;")
 }
 
 # Define server logic 
@@ -422,6 +433,8 @@ server <- function(input, output, session) {
   # Data importing
   importedData <- reactive({
     req(input$allData)
+    ext <- tools::file_ext(input$allData$datapath)
+    validate(need(ext == "RData", "Please upload a valid RData file"))
     readRDS(input$allData$datapath)
   })
   
@@ -493,6 +506,8 @@ server <- function(input, output, session) {
     req(values$pullClinFrom)
     if (values$pullClinFrom == 'clin'){
       req(input$clin)
+      ext <- tools::file_ext(input$clin$datapath)
+      validate(need(ext == "csv", "Please upload a csv file"))
       vroom::vroom(input$clin$datapath,
                    .name_repair = 'minimal',
                    col_types = cols())
@@ -509,6 +524,8 @@ server <- function(input, output, session) {
     req(values$pullMetabFrom)
     if (values$pullMetabFrom == 'metab'){
       req(input$metab)
+      ext <- tools::file_ext(input$metab$datapath)
+      validate(need(ext == "csv", "Please upload a csv file"))
       vroom::vroom(input$metab$datapath,
                    .name_repair = 'minimal',
                    col_types = cols())
@@ -525,6 +542,8 @@ server <- function(input, output, session) {
     req(values$pullPathFrom)
     if (values$pullPathFrom == 'pathway'){
       req(input$pathway)
+      ext <- tools::file_ext(input$pathway$datapath)
+      validate(need(ext == "csv", "Please upload a csv file"))
       vroom::vroom(input$pathway$datapath,
                    .name_repair = 'minimal',
                    col_types = cols())
@@ -768,9 +787,10 @@ server <- function(input, output, session) {
         for (i in comb_net$nodes$label){
           print(i)
           estimate_i <- pKatRslt()$metab.lm$Estimate[pKatRslt()$metab.lm$metab == i]
+          print(estimate_i)
           
           colorVals <- c(colorVals,color_scale[trunc((estimate_i/abs_max+1)*10.9999/2)])
-          print(color_vals)
+          print(colorVals)
         }
         comb_net$nodes$color <- colorVals
       }
