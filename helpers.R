@@ -283,9 +283,6 @@ metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
     
     .form <- as.formula(fp)
     
-    
-    
-    
     if(out.type == "C"){
       mMod <- lm(.form, data = dd)
     } 
