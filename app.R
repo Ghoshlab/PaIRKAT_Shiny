@@ -63,9 +63,9 @@ ui <- function(request) {
                           tags$li("Upload Data",
                                   p("Three datasets are required to use PaIRKAT"),
                                   tags$ol(
-                                    tags$li("Clinical Data: Contains clinical outcomes of interest and any meaningful covariates to be adjusted for. Rows should be subjects and columns should be variables"),
-                                    tags$li("Metabolite Measurements: Contains measurments of metabolites for all subjects. Rows should match order of subjects in Clinical Data and columns should be metabolite names"),
-                                    tags$li("Pathway Metadata: Contains linkage data and pathway information. Rows are metabolites and columns are variables. Should contain a column with KEGG IDs.")
+                                    tags$li("Clinical Data: Contains clinical outcomes of interest and any meaningful covariates to be adjusted for. Rows should be subjects and columns should be variables."),
+                                    tags$li("Metabolite Measurements: Contains measurments of metabolites for all subjects. Rows should be subjects and columns should be metabolite names. One column should have subject IDs matching subject IDs in clinical data."),
+                                    tags$li("Pathway Data: Contains linkage data and pathway information. Rows are metabolites and columns are variables. Should contain a column with KEGG IDs.")
                                   ),
                           ),
                           tags$li("Gather Pathways"),
@@ -83,11 +83,13 @@ ui <- function(request) {
                         h3("Data Cleaning Guide"),
                         p("PaIRKAT requires clean data to function properly. Uploaded files should be in the .csv file format and should abide by the following criteria:"),
                         tags$ul(
-                          tags$li("Rows or columns with missing data should be removed or imputed"),
-                          tags$li("Remove any special characters"),
-                          tags$li("Remove duplicate rows or column names"),
-                          tags$li("Variables names should be in the first row of the spreadsheet with no leading empty rows prior to the start of the data"),
-                          tags$li("Categorical variables should be converted to one-hot-encodings (aka dummy variables) with 1 or 0 representing inclusion or non-inclusion in a group respectively"),
+                          tags$li("Rows of clinical data and metabolite measurements with missing data should be removed or imputed."),
+                          tags$li("Metabolite measurements should be normalized."),
+                          tags$li("Metabolite measurements and clinical data should both have a subject ID column with the same name for merging."),
+                          tags$li("Remove any special characters."),
+                          tags$li("Remove duplicate rows or column names."),
+                          tags$li("Variables names should be in the first row of the spreadsheet with no leading empty rows prior to the start of the data."),
+                          tags$li("Categorical variables should be converted to one-hot-encodings (aka dummy variables) with 1 or 0 representing inclusion or non-inclusion in a group respectively."),
                         ),
                         h3("Methods"),
                         p("PaIRKAT is a tool for improving testing power on high dimensional data by including graph topography in the kernel machine regression setting. Studies on high dimensional data can struggle 
@@ -148,6 +150,9 @@ ui <- function(request) {
                                      
                                      helpText('Column in meta data that contains column names of metabolite data.'),
                                      selectInput("pathCol", "Metabolite Names", choices = NULL),
+                                     
+                                     helpText('Column in metabolitte measurements and clinical data with subject IDs (should be the same column name in both).'),
+                                     selectInput("SID", "Subject IDs", choices = NULL),
                                      
                                      helpText('Select a minimum pathway size. Pathways with fewer than the minimum size will be filtered from results'),
                                      numericInput("minSize", "Minimum Pathway Size",
@@ -628,16 +633,13 @@ server <- function(input, output, session) {
                           database = input$pathwayDatabase, pdat = pdat,
                           pathCol = as.character(input$pathCol),
                           pathID = .pID)
-        
       })
       nn
     }
     else if (reac$networks){
       importedData()$networks
-      
     }
   })
-  
   
   ## PairKAt Results
   
@@ -646,22 +648,27 @@ server <- function(input, output, session) {
     reac$pKatRslt
   },{
     
-    
     if (input$pKat > 0){
       req(input$pKat)
       
       validate(
-        need(is.numeric(clinDat()[[input$Y]]),"Outcome variable should be numeric"),
+        need(is.numeric(clinDat()[[input$Y]]),"Outcome variable should be numeric."),
         # need(input$X > 0, "Please select at least 1 clinical covariate. Unadjusted models coming soon."),
-        need(!(input$Y %in% input$X), "The outcome should not be included in covariates")
+        need(!(input$Y %in% input$X), "The outcome should not be included in covariates."),
+        need(!(input$SID %in% input$X), "The subject ID should not be included in covariates.")
       )
+      
+      ## Ordering both data sets by input subject id
+      c.ord <- order(clinDat()[[input$SID]])
+      m.ord <- order(metabDat()[[input$SID]])      
       
       if(is.null(input$X)){
         .formula <- '~ 1'
         mm <- matrix(1, nrow = nrow(clinDat()))
       } else{
         .formula <- suppressWarnings(formula_fun(input$X))
-        mm <- model.matrix(.formula, data = clinDat())
+        mm <- model.matrix(.formula, 
+                           data = clinDat()[c.ord, ])
       }
       
       npath <- nrow(networks()$pdat$testPaths)
@@ -675,8 +682,8 @@ server <- function(input, output, session) {
         for (i in 1:npath) {
           z <- PaIRKAT(G = networks()$networks[[i]],
                        out.type = input$outType,
-                       Y = clinDat()[, input$Y], model = mm,
-                       tau = input$tau, metab = metabDat())
+                       Y = clinDat()[c.ord, input$Y], model = mm,
+                       tau = input$tau, metab = metabDat()[m.ord, ])
           
           pKat.rslt[i,] <- c(networks()$pdat$testPaths$pathwayNames[i],
                              networks()$pdat$testPaths$inpathway[i],
@@ -698,23 +705,20 @@ server <- function(input, output, session) {
       sig.net <- list(networks = networks()$networks[sig.path],
                       testPaths = networks()$pdat$testPaths[sig.path,])
       
-      metab.lm <- metabMod(sig.net, Y = clinDat()[, input$Y],
-                           clinDat = clinDat(), metab =  metabDat(),
+      metab.lm <- metabMod(sig.net, Y = clinDat()[c.ord, input$Y],
+                           clinDat = clinDat()[c.ord, ], metab =  metabDat()[m.ord, ],
                            .formula = .formula, out.type = input$outType)
       
       pKat.rslt$Pathway.Size <- as.numeric(pKat.rslt$Pathway.Size)
       
       pKat.rslt$Score.Statistic <- as.numeric(pKat.rslt$Score.Statistic)
 
-      
       list(pKat.rslt = pKat.rslt[sig.path,], metab.lm = metab.lm, y = input$Y, X = input$X)
     }
     
     else if (reac$pKatRslt){
       importedData()$pKatRslt
     }
-    
-    
   })
   
   ## Combined Network
@@ -763,9 +767,6 @@ server <- function(input, output, session) {
       else{
         value <- 1
       }
-      
-      
-      
       
       colorVals <- NULL
       estimates <- NULL
@@ -881,6 +882,10 @@ server <- function(input, output, session) {
                updateSelectInput(session, "pathCol",
                                  choices = names(pathDat()) ))
   
+  observeEvent(pathDat(),
+               updateSelectInput(session, "SID",
+                                 choices = names(clinDat()) ))
+  
   observeEvent(networks(),
                updateSelectInput(session, "plotPath",
                                  choices = names(networks()$networks),
@@ -914,7 +919,6 @@ server <- function(input, output, session) {
                         choices = names(pKatRslt()$metab.lm),
                         selected = names(pKatRslt()$metab.lm)[1])
     }
-    
   })
   
   observeEvent({
@@ -937,7 +941,6 @@ server <- function(input, output, session) {
                         choices = names(pKatRslt()$metab.lm),
                         selected = names(pKatRslt()$metab.lm)[7])
     }
-    
   })
   
   observeEvent({
@@ -960,7 +963,6 @@ server <- function(input, output, session) {
                         choices = c("None",names(pKatRslt()$metab.lm)),
                         selected = "None")
     }
-    
   })
   
   observeEvent({
@@ -983,9 +985,7 @@ server <- function(input, output, session) {
                         choices = c("None",names(pKatRslt()$metab.lm)),
                         selected = "None")
     }
-    
   })
-  
   
   observe({
     #req(comb_net())
@@ -1138,7 +1138,6 @@ server <- function(input, output, session) {
       grid.draw(legend)
     }
   }
-  
   )
   
   output$plotBuilder <- renderPlot(
@@ -1251,10 +1250,7 @@ server <- function(input, output, session) {
               geom_vline(xintercept = -as.numeric(input$xCutoff), linetype = input$cutoffLines)
           }
         }
-        
       }
-      
-      
       
       p <- p + get(input$plotTheme)()  +
         theme(text = element_text(size = input$plotFontSize))
