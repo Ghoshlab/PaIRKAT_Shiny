@@ -54,11 +54,13 @@ getNetworks <- function(pathDat, metab, database = "KEGG",
 }
 
 # pathVar,
-pathList <- function(pathDat, database = "KEGG", min.size){
+pathList <- function(pathDat, database = "KEGG", min.size, organism = "hsa"){
+  species_lookup <- as.data.frame(keggList("organism")[,2:3])
+  species_name <- species_lookup[species_lookup$organism == organism,2]
   
   if(database == "KEGG"){
     .cr <- keggLink("compound", "reaction")
-    hsapath <- unique(keggLink("pathway", "hsa"))
+    hsapath <- unique(keggLink("pathway", species))
   } 
   
   cr <- substr(.cr, 5, nchar(.cr))
@@ -76,7 +78,7 @@ pathList <- function(pathDat, database = "KEGG", min.size){
   results$inpathway <- sapply(comp, function(co) sum(compId %in% co))
   
   testPaths <- results[results$inpathway >= min.size, ]
-  co <- sub(" - Homo sapiens (human)", "",
+  co <- sub(paste(" -", species_name), "",
             compNames[names(compNames) %in% testPaths$keggPath],
             fixed = T)
   
@@ -196,12 +198,12 @@ getLaplacian <- function(path_id, metabo2, tau){
 formula_fun <- function(covs){
   cc <- character(0)
   if (length(covs) > 1){
-    for(i in 2:length(covs)) cc <- paste(cc, covs[i], sep = "+")
-    formula( paste0("~ ", covs[1], cc) )  ## pasting for final formula
+    for(i in 2:length(covs)) cc <- paste(cc, paste0("`",covs[i],"`"), sep = "+")
+    formula( paste0("~ ", paste0("`",covs[1],"`"), cc) )  ## pasting for final formula
   } else if (length(covs) == 1){
-    formula(paste("~",covs))
+    formula(paste("~",paste0("`",covs,"`")))
   } else{
-    NULL
+    formula(paste("~ 1"))
   }
   
 }
@@ -264,7 +266,6 @@ kernelScoreD <- function(K, Y, X){
 
 ## modeling 1 metabolite at a time
 metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
-  
   V.labs <- lapply(sig.net$networks, function(G) V(G)$label)
   varnames <- unique(unlist(V.labs))
   ZZ <- metab[, varnames[varnames %in% names(metab)]]
@@ -274,15 +275,16 @@ metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
                          `t value` = numeric(),
                          pVal = numeric())
   
+  
   for(i in 1:ncol(ZZ)){
-    dd <- data.frame(Y, clinDat, ZZ[,i])
+    #dd <- data.frame(Y, clinDat, ZZ[,i])
+    dd <- tibble(Y, clinDat, ZZ[,i], .name_repair = "minimal")
     
     names(dd)[length(names(dd))] <- colnames(ZZ)[i]
     fp <- paste(colnames(dd)[1],
                 paste(.formula, paste0("`",names(ZZ)[i],"`"), sep = "+")[2], sep = "~")
     
     .form <- as.formula(fp)
-    
     if(out.type == "C"){
       mMod <- lm(.form, data = dd)
     } 
@@ -290,9 +292,7 @@ metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
       mMod <- glm(.form, data = dd, family = binomial())
     }
     cf <- coef(summary(mMod))
-    
     metab.lm[i, ] <- cf[nrow(cf), ]
-    
     
   }
   metab.lm$metab <- names(ZZ)

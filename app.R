@@ -39,9 +39,6 @@ library(gridExtra)
 library(vroom)
 library(BiocManager)
 library(XVector)
-
-
-
 source('helpers.R')
 
 # Define UI for application that draws a histogram
@@ -50,10 +47,8 @@ ui <- function(request) {
     tags$head(
       tags$link(rel = "stylesheet", type = "text/css", href = "style.css")
     ),
-    
     navbarPage("PaIRKAT",
                tabPanel("About",
-                        
                         h1("About PaIRKAT"),
                         p("PaIRKAT is model framework for assessing statistical relationships between networks of 
                           metabolites (pathways) and clinical outcome. PaIRKAT queries the KEGG database to determine interactions between metabolites
@@ -102,8 +97,7 @@ ui <- function(request) {
                         p("Paper Citation"),
                         h3("Grant Information"),
                         h3("License"),
-        
-                        
+                        p("PaIRKAT is released under the GNU General Public License version 3 (GPLv3)"),
                ),
                tabPanel("Data Input",
                         fillPage(
@@ -117,17 +111,16 @@ ui <- function(request) {
                    first column. Metabolites should be normalized and imputed."),
                                        fileInput("metab", h6("File Select"), accept = c(".csv")),
                                        
-                                       h4("Metabolome Meta Data"),
+                                       h4("Pathway Data"),
+                                       h6("Pathway data linking metabolite names to KEGG IDs"),
                                        fileInput("pathway", h6("File Select"), accept = c(".csv")),
-                                       
                                        h5("Optional"),
                                        h4("PaIRKAT Session"),
                                        fileInput("allData",
-                                                 h6("Select .RData file created
-                                                  from previous PaIRKAT session."),
-                                                 accept = ".RData")
+                                                 h6("Load past PaIRKAT session"),
+                                                 accept = ".RData"),
+                                       downloadButton("downloadData", "Save current PaIRKAT session"), 
                           ),
-                          
                           mainPanel(
                             tabsetPanel(
                               tabPanel("Clinical Data", DT::dataTableOutput("clinTab")),
@@ -136,37 +129,29 @@ ui <- function(request) {
                             )
                           )
                         )
-                        
                ),
                tabPanel("Pathways",
                         sidebarPanel(h4("Gather Pathways"),
-                                     
-                                     
-                                     helpText('Column in meta data that contains KEGG IDs.'),
+                                     helpText('Column in pathway data that contains KEGG IDs.'),
                                      selectInput("pathID", "KEGG IDs", choices = NULL),
-                                     
-                                     helpText('Column in meta data that contains HMDB IDs.'),
+                                     helpText('Organism from which data were collected'),
+                                     selectizeInput("organism", "Organism", choices = NULL),
+                                     helpText('Column in pathway data that contains HMDB IDs.'),
                                      selectInput("hmdbID", "HMDB IDs (optional)", choices = NULL),
-                                     
-                                     helpText('Column in meta data that contains column names of metabolite data.'),
+                                     helpText('Column in pathway data that contains column names of metabolite data.'),
                                      selectInput("pathCol", "Metabolite Names", choices = NULL),
-                                     
                                      helpText('Column in metabolitte measurements and clinical data with subject IDs (should be the same column name in both).'),
                                      selectInput("SID", "Subject IDs", choices = NULL),
-                                     
                                      helpText('Select a minimum pathway size. Pathways with fewer than the minimum size will be filtered from results'),
                                      numericInput("minSize", "Minimum Pathway Size",
                                                   value = 10, min = 0),
-                                     
                                      helpText('This step will take some time.'),
-                                     actionButton("pathButton", "Gather Pathways"),
-                                     selectInput("plotPath", "Pathway to plot",
-                                                 choices = NULL),
-                                     
-                                     #downloadButton("downloadPathway", "Download PaIRKAT_Pathways")
+                                     actionButton("pathButton", "Gather Pathways")
                         ),
                         
-                        mainPanel(visNetworkOutput("pathPlot", height = "600px"))
+                        mainPanel(selectInput("plotPath", "Pathway to plot",
+                                              choices = NULL),
+                          visNetworkOutput("pathPlot", height = "80vh"))
                ),
                tabPanel("PaIRKAT",
                         fluidRow(
@@ -193,19 +178,12 @@ ui <- function(request) {
                                                          value = 0.05, min = 0, max = 1),
                                             bsTooltip(id = "alpha", title = "Remove pathways with p-values above \u03B1", placement = "bottom", trigger = "hover",
                                                       options = NULL),
-                                            
                                             actionButton("pKat", "Run PaIRKAT"),
-                                            
                                             downloadButton("downloadPaIRKAT", "Download PaIRKAT Results"), 
                                           )
-                                          
                                    ),
-                                   
                                  )
-                                 
                           ),
-                          
-                          
                           column(8,
                                  h3("Model Information"),
                                  "Outcome: ",textOutput("pKatY"),
@@ -213,8 +191,6 @@ ui <- function(request) {
                                  h3("Results"),
                                  DT::dataTableOutput("pKatTab"),
                           ),
-                          
-                          
                         )
                ),
                tabPanel("Visualizations",
@@ -222,13 +198,11 @@ ui <- function(request) {
                           tabPanel("Network Graph",
                                    fluidRow(
                                      column(4,
-                                            
                                             fluidRow(
                                               column(12,
                                                      wellPanel(
-                                                       div(style = 'overflow-y: scroll; height: 70vh',
+                                                       #div(style = 'overflow-y: scroll; height: 70vh',
                                                            h4("Plot Control"),
-                                                           
                                                            bsCollapse(id = "collapseContainer", open = "Data", multiple = T,
                                                                       bsCollapsePanel("Data", 
                                                                                       DT::dataTableOutput("pKatpaths"),
@@ -240,7 +214,6 @@ ui <- function(request) {
                                                                                                     "Interpathway Connectivity" = "interpathway_connectivity",
                                                                                                     "Significance" = 'significance'
                                                                                                   )),
-                                                                                      
                                                                                       style = "info"),
                                                                       bsCollapsePanel("Color", 
                                                                                       selectInput("colorBy", "Color Nodes By",
@@ -249,7 +222,6 @@ ui <- function(request) {
                                                                                                     "Effect on Outcome" = "effectsize")
                                                                                       ),
                                                                                       colourInput("nodeColor", "Constant Color", "blue"),
-                                                                                      
                                                                                       style = "info"),
                                                                       bsCollapsePanel("Labels", 
                                                                                       checkboxInput('nodeLabels', label = "Node Labels", value = TRUE),
@@ -290,29 +262,20 @@ ui <- function(request) {
                                                                                                   max = 1,
                                                                                                   value = 0),
                                                                                       style = "info")
-                                                           )
-                                                       ),
-                                                           actionButton("updateplot", "Redraw Plot"),
-                                                           downloadButton("downloadNetwork", "Export Graph"),
-                                                           downloadButton("downloadData", "Download PaIRKAT Session"), 
+                                                           ),
+                                                       #),
+                                                       actionButton("updateplot", "Redraw Plot"),
+                                                       downloadButton("downloadNetwork", "Export Graph"),
                                                        
                                                      )
                                               ),
-                                              
                                             ),
-                                            
-                                            
                                      ),
-                                     
-                                     
                                      column(7, 
-                                            visNetworkOutput("pathResultsPlot", height = "90vh"),
-                                            
+                                            visNetworkOutput("pathResultsPlot", height = "90vh"),    
                                      ),
                                      column(1,plotOutput("pathLegend", height = "90vh")
-                                     ),
-                                     
-                                     
+                                     ), 
                                    )
                           ),
                           tabPanel("Plot Builder",
@@ -328,7 +291,6 @@ ui <- function(request) {
                                                                                                 "Pathway Results" = "pathways",
                                                                                                 "Metabolites" = "metabolites",
                                                                                                 "Clinical Data" = "clinical"
-                                                                                                
                                                                                               )),
                                                                                   selectInput("plotY", "Y Variable",
                                                                                               choices = NULL),
@@ -338,7 +300,6 @@ ui <- function(request) {
                                                                                               choices = NULL),
                                                                                   selectInput("plotSize", "Size by",
                                                                                               choices = NULL),
-                                                                                  
                                                                                   style = "info"),
                                                                   bsCollapsePanel("Labels/Text", 
                                                                                   textInput("plotTitle", label = "Plot Title", value = "", width = NULL, placeholder = ""),
@@ -376,7 +337,6 @@ ui <- function(request) {
                                                                                                value = 4),
                                                                                   style = "info"),
                                                                   bsCollapsePanel("Aesthetics", 
-                                                                                  
                                                                                   selectInput("plotTheme", "Plot Theme",
                                                                                               c("Gray" = "theme_gray",
                                                                                                 "BW" = "theme_bw",
@@ -393,16 +353,13 @@ ui <- function(request) {
                                                                                                 "Purples", "RdPu", "Reds", "YlGn", 
                                                                                                 "YlGnBu", "YlOrBr", "YlOrRd"
                                                                                               )),
-                                                                                  
                                                                                   numericInput(inputId = "plotPointSize",
                                                                                                label = "Constant Point Size",
                                                                                                value = 1,
                                                                                                min = 0,
                                                                                                max = 10,
                                                                                                step = 0.1),
-                                                                                  
                                                                                   style = "info")
-                                                                  
                                                        ),
                                                      )
                                               )
@@ -413,20 +370,16 @@ ui <- function(request) {
                                      ),
                                    )
                           )
-                        ),
-                        
-               )
-               
+                        ),     
+               )     
     )
-  ,style = "max-height: 100vh; overflow-y: auto;")
+    ,style = "max-height: 100vh; overflow-y: auto;")
 }
 
 # Define server logic 
 server <- function(input, output, session) {
   ## Increasing max input file size
   options(shiny.maxRequestSize=30*1024^2)
-  
-  
   reac <- reactiveValues("clinDat" = F,
                          "metabDat" = F,
                          "pathDat" = F,
@@ -434,6 +387,8 @@ server <- function(input, output, session) {
                          "pKatRslt" = F,
                          "comb_net" = F)
   
+  # Organism server-side selection
+  updateSelectizeInput(session, "organism", choices = keggList("organism")[,3], server = T)
   
   # Data importing
   importedData <- reactive({
@@ -442,12 +397,9 @@ server <- function(input, output, session) {
     validate(need(ext == "RData", "Please upload a valid RData file"))
     readRDS(input$allData$datapath)
   })
-  
   observe({
     req(importedData())
     importNames <- names(importedData())
-    
-    
     if ("clinDat" %in% importNames){
       reac$clinDat <- T
     }
@@ -466,9 +418,7 @@ server <- function(input, output, session) {
     if ("comb_net" %in% importNames){
       reac$comb_net <- T
     }
-    
   })
-  
   
   ####### Data Objects #########
   
@@ -478,8 +428,7 @@ server <- function(input, output, session) {
     pullClinFrom = NULL,
     pullMetabFrom = NULL,
     pullPathFrom = NULL
-  )
-  
+  ) 
   observe({
     lapply(c('clin','allData'), function(x) {
       observe({
@@ -487,8 +436,7 @@ server <- function(input, output, session) {
         values$pullClinFrom <- x
       })
     })
-  })
-  
+  }) 
   observe({
     lapply(c('metab','allData'), function(x) {
       observe({
@@ -497,7 +445,6 @@ server <- function(input, output, session) {
       })
     })
   })
-  
   observe({
     lapply(c('pathway','allData'), function(x) {
       observe({
@@ -505,8 +452,7 @@ server <- function(input, output, session) {
         values$pullPathFrom <- x
       })
     })
-  })
-  
+  }) 
   clinDat <- reactive({
     req(values$pullClinFrom)
     if (values$pullClinFrom == 'clin'){
@@ -517,14 +463,10 @@ server <- function(input, output, session) {
                    .name_repair = 'minimal',
                    col_types = cols())
     }
-    
     else if (values$pullClinFrom == 'allData' & reac$clinDat){
       importedData()$clinDat
-      
-    }
-    
+    }   
   })
-  
   metabDat <- reactive({
     req(values$pullMetabFrom)
     if (values$pullMetabFrom == 'metab'){
@@ -534,15 +476,11 @@ server <- function(input, output, session) {
       vroom::vroom(input$metab$datapath,
                    .name_repair = 'minimal',
                    col_types = cols())
-    }
-    
+    }   
     else if (values$pullMetabFrom == 'allData' & reac$metabDat){
-      importedData()$metabDat
-      
-    }
-    
-  })
-  
+      importedData()$metabDat     
+    }   
+  }) 
   pathDat <- reactive({
     req(values$pullPathFrom)
     if (values$pullPathFrom == 'pathway'){
@@ -552,18 +490,12 @@ server <- function(input, output, session) {
       vroom::vroom(input$pathway$datapath,
                    .name_repair = 'minimal',
                    col_types = cols())
-    }
-    
+    }   
     else if (values$pullPathFrom == 'allData' & reac$pathDat){
       importedData()$pathDat
-      
-    }
-    
-  })
-  
-  
-  ## Network Objects
-  
+    }   
+  }) 
+  ## Network Objects 
   networks <- eventReactive({
     input$pathButton
     reac$networks
@@ -571,32 +503,30 @@ server <- function(input, output, session) {
     if (input$pathButton > 0) {
       req(input$pathButton)
       kegg_format <- grepl("^[C,D]", unique(na.omit(pathDat()[[input$pathID]])))
-      
+      metab_names <- pathDat()[[input$pathCol]]
       validate(
         need(sum(kegg_format)/length(kegg_format) > 0.8, "Invalid KEGG IDs, IDs should start with C or D"),
-        need(sum(pathDat()[[input$pathCol]] %in% colnames(metabDat())) > 1, "Column containing metabolite names should match column names from metabolite data")
-        
+        need(sum(pathDat()[[input$pathCol]] %in% colnames(metabDat())) > 1, "Column containing metabolite names should match column names from metabolite data"),
+        need((input$SID %in% names(metabDat())), "The subject ID varible name should be the same in both clinical and metabolite datasets."),
+        need(length(metab_names[duplicated(metab_names)]) == 0, paste("Found duplicate metabolite names in Pathway Data. Please remove duplicate entries for: ",
+                                                                      metab_names[duplicated(metab_names)]))
       )
-      
       withProgress(message = 'Gathering Pathways', value = 0, {
         setProgress(0, detail = "Connecting to Database")
+        species_lookup <- as.data.frame(keggList("organism")[,2:3])
+        species_id <- species_lookup[species_lookup$species == input$organism,1]
         .cr <- keggLink("compound", "reaction")
-        hsapath <- unique(keggLink("pathway", "hsa"))
-        
+        hsapath <- unique(keggLink("pathway", species_id))
         .pID <- as.character(input$pathID)
-        
         cr <- substr(.cr, 5, nchar(.cr))
         reactions <- names(cr)
         compId <- pathDat()[,.pID]
         compId <- unlist(strsplit(compId[!is.na(compId)], "[,]"))
-        
         results <- data.frame(keggPath = hsapath,
                               stringsAsFactors=FALSE)
         np <- length(hsapath); comps <- list()
-        
         for(i in 1:np){
           comps[[i]] <- keggGet(hsapath[i])[[1]]
-          
           if(i < np){
             setProgress(i/np, message = 'Gathering Pathways',
                         detail = paste(i, "pathways gathered"))
@@ -606,29 +536,23 @@ server <- function(input, output, session) {
                         detail = "Forming Networks")
           }
         }
-        
         names(comps) <- hsapath
         comp <- sapply(comps, function(p) names(p$COMPOUND))
         compNames <- sapply(comps, function(p) p$NAME)
         results$inpathway <- sapply(comp, function(co) sum(compId %in% co))
-        
-        co <- sub(" - Homo sapiens (human)", "",
+        co <- sub(paste(" -", input$organism), "",
                   compNames[names(compNames) %in% results$keggPath],
                   fixed = T)
-        
         results <- merge(results,
                          data.frame(keggPath = names(co),
                                     pathwayNames = co),
                          by = "keggPath")
         testPaths <- results[results$inpathway >= input$minSize, ]
-        
-        
         pdat <- list(testPaths = testPaths,
                      comps = comps[names(comps) %in% testPaths$keggPath],
                      # path.dat = pathDat()[!is.na(pathDat()$KEGG) & !duplicated(pathDat()$KEGG), ],
                      compoundReaction = cr)
         #### End of `pathList` function
-        
         nn <- getNetworks(pathDat = pathDat(), metab = metabDat(),
                           database = input$pathwayDatabase, pdat = pdat,
                           pathCol = as.character(input$pathCol),
@@ -650,18 +574,23 @@ server <- function(input, output, session) {
     
     if (input$pKat > 0){
       req(input$pKat)
-      
       validate(
         need(is.numeric(clinDat()[[input$Y]]),"Outcome variable should be numeric."),
         # need(input$X > 0, "Please select at least 1 clinical covariate. Unadjusted models coming soon."),
         need(!(input$Y %in% input$X), "The outcome should not be included in covariates."),
-        need(!(input$SID %in% input$X), "The subject ID should not be included in covariates.")
+        need(!(input$SID %in% input$X), "The subject ID should not be included in covariates."),
+        need({
+          if((input$outType == "D" & any(unique(clinDat()[input$Y]) != c(0,1)))){
+            FALSE
+          }
+          else{
+            TRUE
+          }
+        }, "Dichotomous outcome values should be 0 and 1")
       )
-      
       ## Ordering both data sets by input subject id
       c.ord <- order(clinDat()[[input$SID]])
-      m.ord <- order(metabDat()[[input$SID]])      
-      
+      m.ord <- order(metabDat()[[input$SID]])
       if(is.null(input$X)){
         .formula <- '~ 1'
         mm <- matrix(1, nrow = nrow(clinDat()))
@@ -670,13 +599,11 @@ server <- function(input, output, session) {
         mm <- model.matrix(.formula, 
                            data = clinDat()[c.ord, ])
       }
-      
       npath <- nrow(networks()$pdat$testPaths)
       pKat.rslt <- data.frame(Pathway = character(npath),
                               `Pathway Size` = numeric(npath),
                               `Score Statistic` = numeric(npath),
                               pValue = numeric(npath))
-      
       set.seed(input$seed)
       withProgress(message = 'Running PaIRKAT', value = 0, {
         for (i in 1:npath) {
@@ -684,45 +611,36 @@ server <- function(input, output, session) {
                        out.type = input$outType,
                        Y = clinDat()[c.ord, input$Y], model = mm,
                        tau = input$tau, metab = metabDat()[m.ord, ])
-          
           pKat.rslt[i,] <- c(networks()$pdat$testPaths$pathwayNames[i],
                              networks()$pdat$testPaths$inpathway[i],
                              z['Q'], z['pVal'], z['ka'], z['nu'])
-          
           incProgress(1/npath,
                       message = "Running PaIRKAT",
                       detail = paste("Completed",
                                      networks()$pdat$testPaths$pathwayNames[i]))
-          
         }
       })
       pKat.rslt$pValueFDR <- p.adjust(pKat.rslt$pValue, method = "BH")
       pKat.rslt$neg.log10.FDR.pValue <- -log10(pKat.rslt$pValueFDR)
-      
       ## Linear model of single metabolites
       sig.path <- pKat.rslt$pValueFDR < input$alpha
-      
+      validate(
+        need(sum(sig.path) > 0, "No significant pathways for chosen alpha.")
+      )
       sig.net <- list(networks = networks()$networks[sig.path],
                       testPaths = networks()$pdat$testPaths[sig.path,])
-      
       metab.lm <- metabMod(sig.net, Y = clinDat()[c.ord, input$Y],
                            clinDat = clinDat()[c.ord, ], metab =  metabDat()[m.ord, ],
                            .formula = .formula, out.type = input$outType)
-      
       pKat.rslt$Pathway.Size <- as.numeric(pKat.rslt$Pathway.Size)
-      
       pKat.rslt$Score.Statistic <- as.numeric(pKat.rslt$Score.Statistic)
-
       list(pKat.rslt = pKat.rslt[sig.path,], metab.lm = metab.lm, y = input$Y, X = input$X)
     }
-    
     else if (reac$pKatRslt){
       importedData()$pKatRslt
     }
   })
-  
   ## Combined Network
-  
   comb_net <- eventReactive( {
     input$pKatpaths_rows_selected
     input$updateplot
@@ -733,24 +651,14 @@ server <- function(input, output, session) {
   {
     req(pKatRslt())
     if (length(input$pKatpaths_rows_selected > 0)){
-      
       nn <- networks()
       nn$networks <- rename_network_vertices(nn$networks)
-      
       for (i in 1:length(nn$networks)){
         nn$networks[[i]] <- convert_network(nn$networks[i])
       }
-      
       important_networks <- pKatRslt()$pKat.rslt$Pathway[input$pKatpaths_rows_selected]
-      
-      print(important_networks)
-      
       comb_net <- combine_networks(nn$networks[important_networks])
-      
-      print(comb_net)
-      
       value <- NULL
-      
       if (input$node_size == "interpathway_connectivity"){
         for (i in 1:length(comb_net$nodes$group)){
           value <- c(value,length(strsplit(comb_net$nodes$group[i], ",")[[1]]))
@@ -767,46 +675,31 @@ server <- function(input, output, session) {
       else{
         value <- 1
       }
-      
       colorVals <- NULL
       estimates <- NULL
       ps <- NULL
-      
       abs_max <- abs(max(pKatRslt()$metab.lm$Estimate))
       color_scale <- brewer.pal(11,"RdYlGn")
-      
-      
       for (i in comb_net$nodes$label){
-        
         estimate_i <- pKatRslt()$metab.lm$Estimate[pKatRslt()$metab.lm$metab == i]
         estimates <- c(estimates, estimate_i)
-        
         p_i <- pKatRslt()$metab.lm$FDR.pVal[pKatRslt()$metab.lm$metab == i]
         ps <- c(ps, p_i)
-        
       }
-      
       comb_net$nodes$estimate <- estimates
       comb_net$nodes$p_FDR <- ps
-      
       if (input$colorBy == "effectsize"){
         for (i in comb_net$nodes$label){
-          print(i)
           estimate_i <- pKatRslt()$metab.lm$Estimate[pKatRslt()$metab.lm$metab == i]
-          print(estimate_i)
-          
           colorVals <- c(colorVals,color_scale[trunc((estimate_i/abs_max+1)*10.9999/2)])
-          print(colorVals)
         }
         comb_net$nodes$color <- colorVals
       }
-      
       comb_net$nodes$title <- paste("<p><strong>",comb_net$nodes$label,"</strong>",
                                     "<p> Pathway(s):",comb_net$nodes$group,
                                     "<p> \u00DF = ",signif(comb_net$nodes$estimate,4),
                                     "<p> FDR p = ",signif(comb_net$nodes$p_FDR,4)
       )
-      
       if (input$nodeLabels == F) {
         comb_net$nodes$label <- ""
       }
@@ -818,7 +711,6 @@ server <- function(input, output, session) {
       comb_net
     }
   })
-  
   ## Format network plot positions for exporting
   nodes_positions <- reactive({
     positions <- input$network_positions
@@ -830,9 +722,7 @@ server <- function(input, output, session) {
       NULL
     }
   })
-  
   ## Data store for session file saving/loading
-  
   data_list <- reactive({
     data_list <- list()
     try({
@@ -856,49 +746,37 @@ server <- function(input, output, session) {
     # try({
     #     data_list$nodes_positions <- nodes_positions()
     # })
-    
     data_list
   })
-  
   ############ Observers #############
-  
   observeEvent(clinDat(),
                updateSelectInput(session, "X",
                                  choices = names(clinDat()) ))
-  
   observeEvent(clinDat(),
                updateSelectInput(session, "Y",
                                  choices = names(clinDat()) ))
-  
   observeEvent(pathDat(),
                updateSelectInput(session, "pathID",
                                  choices = names(pathDat()) ))
-  
   observeEvent(pathDat(),
                updateSelectInput(session, "hmdbID",
                                  choices = names(pathDat()) ))
-  
   observeEvent(pathDat(),
                updateSelectInput(session, "pathCol",
                                  choices = names(pathDat()) ))
-  
   observeEvent(pathDat(),
                updateSelectInput(session, "SID",
                                  choices = names(clinDat()) ))
-  
   observeEvent(networks(),
                updateSelectInput(session, "plotPath",
                                  choices = names(networks()$networks),
                                  selected = names(networks()$networks)[1]))
-  
   observeEvent(pKatRslt()$y,
                updateTextInput(session, "plotTitle",
-                                 value = pKatRslt()$y))
-  
+                               value = pKatRslt()$y))
   observeEvent(pKatRslt()$y,
                updateTextInput(session, "graphTitle",
                                value = pKatRslt()$y))
-  
   observeEvent({
     clinDat()
     pKatRslt()
@@ -920,7 +798,6 @@ server <- function(input, output, session) {
                         selected = names(pKatRslt()$metab.lm)[1])
     }
   })
-  
   observeEvent({
     clinDat()
     pKatRslt()
@@ -942,7 +819,6 @@ server <- function(input, output, session) {
                         selected = names(pKatRslt()$metab.lm)[7])
     }
   })
-  
   observeEvent({
     clinDat()
     pKatRslt()
@@ -964,7 +840,6 @@ server <- function(input, output, session) {
                         selected = "None")
     }
   })
-  
   observeEvent({
     clinDat()
     pKatRslt()
@@ -986,23 +861,16 @@ server <- function(input, output, session) {
                         selected = "None")
     }
   })
-  
   observe({
     #req(comb_net())
     if (length(input$pKatpaths_rows_selected > 0)){
-      print(comb_net()$nodes)
       try(
         visNetworkProxy("pathResultsPlot") %>%
           visSetData(nodes = comb_net()$nodes, edges = comb_net()$edges) %>%
           visLayout(randomSeed = 64209)
       )
-      
-      
-      
     }
-    
   })
-  
   observe({
     visNetworkProxy("pathResultsPlot") %>%
       visPhysics(enabled = input$graphPhysics,
@@ -1013,29 +881,22 @@ server <- function(input, output, session) {
                                   damping = input$damping,
                                   avoidOverlap = input$avoidOverlap))
   })
-  
   observe({
     visNetworkProxy("pathResultsPlot") %>%
       visNodes(color = input$nodeColor)
   })
-  
   observe({
     visNetworkProxy("pathResultsPlot") %>%
       visSetTitle(main = input$graphTitle)
   })
-  
   observeEvent(input$updategraph,{
     visNetworkProxy("pathResultsPlot") %>% visSetData(nodes = comb_net()$nodes, edges = comb_net()$edges)
   })
-  
   # get position info
   observeEvent(input$store_position, {
     visNetworkProxy("pathResultsPlot") %>% visGetPositions()
   })
-  
-  
   ########### Outputs ############
-  
   output$clinTab <- DT::renderDataTable({
     req(clinDat())
     DT::datatable(clinDat(),options = list(
@@ -1043,7 +904,6 @@ server <- function(input, output, session) {
       scrollY = "70vh", 
       scrollX = T)) %>% formatSignif(columns = names(clinDat())[sapply(clinDat(), is.decimal)], digits = 4)
   })
-  
   output$metabTab <- DT::renderDataTable({
     req(metabDat())
     DT::datatable(metabDat(),options = list(
@@ -1051,7 +911,6 @@ server <- function(input, output, session) {
       scrollY = "70vh", 
       scrollX = T)) #%>% formatSignif(columns = names(metabDat())[sapply(metabDat(), is.decimal)], digits = 4)
   })
-  
   output$pathTab <- DT::renderDataTable({
     req(pathDat())
     DT::datatable(pathDat(),options = list(
@@ -1059,20 +918,17 @@ server <- function(input, output, session) {
       scrollY = "70vh", 
       scrollX = T)) #%>% formatSignif(columns = names(pathDat())[sapply(pathDat(), is.decimal)], digits = 4)
   })
-  
   output$pathPlot <- renderVisNetwork({
     req(networks())
     req(input$plotPath)
-    nn <- networks()
-    
+    nn <- networks() 
     nn$networks <- rename_network_vertices(nn$networks)
     g <- toVisNetworkData(nn$networks[[as.character(input$plotPath)]])
-    visNetwork(g$nodes, g$edges, height = "70vh") %>%
+    visNetwork(g$nodes, g$edges) %>%
       visPhysics(stabilization = FALSE) %>%
       visLayout(randomSeed = 64209) %>%
       visLegend()
   })
-  
   output$pKatTab <- DT::renderDataTable({
     req(pKatRslt())
     DT::datatable(pKatRslt()$pKat.rslt %>% arrange(pValueFDR), options = list(
@@ -1080,50 +936,39 @@ server <- function(input, output, session) {
       caption = pKatRslt()$y,
       scrollY = "60vh")) %>% formatSignif(c("pValue","pValueFDR","Score.Statistic","neg.log10.FDR.pValue"), 2)
   })
-  
   output$pKatY <- reactive({
     req(pKatRslt()$y)
     pKatRslt()$y
   })
-  
   output$pKatX <- reactive({
     req(pKatRslt()$X)
     paste(pKatRslt()$X, sep = ",")
   })
-  
   output$pKatpaths <- DT::renderDataTable({
     validate(
       need(req(pKatRslt()), "Run PaIRKAT before visualizing results")
     )
-    
     DT::datatable(pKatRslt()$pKat.rslt[,c(1,2,5)]%>% arrange(pValueFDR), options = list(
       pageLength = 50,
       scrollY = "20vh")) %>% formatSignif("pValueFDR", 2)
   })
-  
   output$pathResultsPlot <- renderVisNetwork({
     nodes <- data.frame("id"=c(0),"label"=c(0),"group"=c(0),"value"=c(0))
     edges <- data.frame("id"=c(0),"from"=c(0),"to"=c(0))
-    
     visNetwork(nodes, edges) %>%
       visLayout(randomSeed = 64209) %>%
       visPhysics(enabled = TRUE,
                  stabilization = TRUE)
   })
-  
   output$pathLegend <- renderPlot({
-    
     req(comb_net())
-    
     mid_rescaler <- function(mid = 0) {
       function(x, to = c(0, 1), from = range(x, na.rm = TRUE)) {
         scales::rescale_mid(x, to, from, mid)
       }
     }
-    
     if (input$colorBy == "effectsize"){
       df <- data.frame(x = c(0,1),y = c(0,1),color = c(-max(abs(pKatRslt()$metab.lm$Estimate)),max(abs(pKatRslt()$metab.lm$Estimate))))
-      
       p <- ggplot(data = df, aes(x = x, y = y, color = color)) +
         geom_point() +
         #scale_color_gradient2(low = "#67000D", mid = "#FFFFFF", high = "#00441B") +
@@ -1132,14 +977,11 @@ server <- function(input, output, session) {
                               direction = 1,
                               guide = guide_colorbar(barheight = 20, barwidth = 2)) +
         labs(color = "Estimated Effect")
-      
       legend <- cowplot::get_legend(p)
-      
       grid.draw(legend)
     }
   }
   )
-  
   output$plotBuilder <- renderPlot(
     {
       req(clinDat())
@@ -1148,93 +990,69 @@ server <- function(input, output, session) {
       }
       else if (input$plotData == "pathways"){
         df <- pKatRslt()$pKat.rslt
-      }
-      
+      }   
       else if (input$plotData == "metabolites"){
         df <- pKatRslt()$metab.lm
-      }
-      
+      }  
       p <- ggplot(data = df, aes_string(y = input$plotY, x = input$plotX)) +
-        ggtitle(label = input$plotTitle)
-      
+        ggtitle(label = input$plotTitle) 
       if (input$plotSize == "None"){
         p <- p + geom_point(size = input$plotPointSize)
       } else {
         p <- p + geom_point()
-      }
-      
-      if (input$plotColor != 'None'){
-        
-        
+      }     
+      if (input$plotColor != 'None'){     
         if (class(df[[input$plotColor]]) == "numeric"){
-          
           p <- p + aes_string(color=input$plotColor)
           if (input$colorScale != "Auto"){
             p <- p + scale_color_distiller(palette = input$colorScale, direction = 1)
-          }
-          
+          }      
         }
         else if (class(df[[input$plotColor]]) == "character" | class(df[[input$plotColor]]) == "factor"){
-          
           p <- p + aes_string(color=input$plotColor)
           #p <- p + scale_color_brewer(palette = input$colorScale)
-        }
-        
-      }
-      
+        } 
+      }    
       if (input$plotSize != 'None'){
         p <- p + aes_string(size=input$plotSize)
-      }
-      
-      
+      }    
       if (input$graphLabels){
         if (input$labelIfX != "All X"){
           validate(
             need(is.numeric(df[[input$plotX]]),"To use conditional labeling along the X axis, X must be a numeric variable")
           )
           if (input$labelIfX == "greater than"){
-            
             labelDat <- df[df[input$plotX] > input$xCutoff,]
           } else if (input$labelIfX == "less than"){
-            
             labelDat <- df[df[input$plotX] < input$xCutoff,]
           } else if (input$labelIfX == "|greater than|"){
-            
             labelDat <- df[abs(df[input$plotX]) > input$xCutoff,]
           }else if (input$labelIfX == "|less than|"){
-            
             labelDat <- df[abs(df[input$plotX]) < input$xCutoff,]
           }
         } else {
           labelDat <- df
         }
-        
         if (input$labelIfY != "All Y"){
           validate(
             need(is.numeric(df[[input$plotY]]),"To use conditional labeling along the Y axis, Y must be a numeric variable")
           )
-          if (input$labelIfY == "greater than"){
-            
+          if (input$labelIfY == "greater than"){ 
             labelDat <- labelDat[labelDat[input$plotY] > input$yCutoff,]
           } else if (input$labelIfY== "less than"){
-            
             labelDat <- labelDat[labelDat[input$plotY] < input$yCutoff,]
           } else if (input$labelIfY == "|greater than|"){
-            
             labelDat <- labelDat[abs(labelDat[input$plotY]) > input$yCutoff,]
           }else if (input$labelIfY == "|less than|"){
-            
             labelDat <- labelDat[abs(labelDat[input$plotY]) < input$yCutoff,]
           }
         }
-        
         if (input$plotData == "metabolites"){
           p <- p + geom_text_repel(data = labelDat, aes_string(label = "metab"), size = input$plotLabelSize)
         }
         else if (input$plotData == "pathways"){
           p <- p + geom_text_repel(data = labelDat, aes_string(label = "Pathway"), size = input$plotLabelSize)
         }
-        
         if (input$cutoffLines != "None"){
           if (input$labelIfY == "greater than" | input$labelIfY == "less than"){
             p <- p + geom_hline(yintercept = input$yCutoff, linetype = input$cutoffLines)
@@ -1242,7 +1060,6 @@ server <- function(input, output, session) {
             p <- p + geom_hline(yintercept = input$yCutoff, linetype = input$cutoffLines)+
               geom_hline(yintercept = -as.numeric(input$yCutoff), linetype = input$cutoffLines)
           }
-          
           if (input$labelIfX == "greater than" | input$labelIfX == "less than"){
             p <- p + geom_vline(xintercept = input$xCutoff, linetype = input$cutoffLines)
           } else if (input$labelIfX == "|greater than|" | input$labelIfX == "|less than|"){
@@ -1250,31 +1067,24 @@ server <- function(input, output, session) {
               geom_vline(xintercept = -as.numeric(input$xCutoff), linetype = input$cutoffLines)
           }
         }
-      }
-      
+      }    
       p <- p + get(input$plotTheme)()  +
-        theme(text = element_text(size = input$plotFontSize))
-      
+        theme(text = element_text(size = input$plotFontSize))     
       p
     }
   )
-  
-  
   output$downloadData <- downloadHandler(
     filename = "PaIRKAT_Data.RData",
     content = function(file) {
-      
       saveRDS(data_list(), file = file)
     }
   )
-  
   output$downloadPaIRKAT <- downloadHandler(
     filename = "PaIRKAT_Results.csv",
     content = function(file) {
       write.csv(pKatRslt()$pKat.rslt, file = file)
     }
-  )
-  
+  ) 
   output$downloadNetwork <- downloadHandler(
     filename = function() {
       paste('network-', Sys.Date(), '.html', sep='')
@@ -1285,15 +1095,13 @@ server <- function(input, output, session) {
         nodes_save <- merge(comb_net()$nodes, nodes_positions, by = "id", all = T)
       } else  {
         nodes_save <- comb_net()$nodes
-      }
-      
+      }  
       visNetwork(nodes = nodes_save, edges = comb_net()$edges, height = "800px") %>%
         visOptions(highlightNearest = TRUE) %>% visExport() %>%
         visPhysics(enabled = FALSE) %>% visEdges(smooth = TRUE) %>% visSave(con)
     }
   )
 }
-
 # Run the application
 #enableBookmarking(store = "server")
 shinyApp(ui = ui, server = server)
