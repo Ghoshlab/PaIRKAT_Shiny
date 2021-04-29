@@ -1,0 +1,31 @@
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - r-base=4.0
+  - r-biocmanager
+  - r-colourpicker
+  - r-cowplot
+  - r-diffusr
+  - r-dt
+  - r-ggplot2
+  - r-ggrepel
+  - r-gridbase
+  - r-gridextra
+  - r-igraph
+  - r-latex2exp
+  - r-magrittr
+  - r-mass
+  - r-matrix
+  - r-matrixcalc
+  - r-rcolorbrewer
+  - r-rcpp
+  - r-readxl
+  - r-scales
+  - r-shiny
+  - r-shinybs
+  - r-tidyverse
+  - r-visnetwork
+  - r-vroom
+  - bioconductor-keggrest
+  - bioconductor-XVector

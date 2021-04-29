@@ -19,10 +19,10 @@
 # Helpful functions
 `%nin%` <- Negate(`%in%`)
 
-pkgs <- c("tidyverse", "magrittr", "igraph", "matrixcalc",
-          "MASS", "diffusr", "Matrix", "KEGGREST")
-
-suppressMessages(lapply(pkgs, library, character.only = T))
+# pkgs <- c("tidyverse", "magrittr", "igraph", "matrixcalc",
+#           "MASS", "diffusr", "Matrix", "KEGGREST")
+# 
+# suppressMessages(lapply(pkgs, library, character.only = T))
 
 ########## Data Set Up #############
 
@@ -327,8 +327,8 @@ rename_network_vertices <- function(networks){
 # convert igraph to visNetwork object
 
 convert_network <- function(network){
-  n <- toVisNetworkData(network[[1]])
-  n$nodes$group <- names(network[1])
+  n <- ggnetwork(network[[1]])
+  n$pathway <- names(network[1])
   n
 }
 
@@ -338,24 +338,6 @@ count_nets <- function(network){
 }
 
 # check if any nodes are common to at least any 2 groups and then combine group names to create a unique list of nodes
-
-combine_networks <- function(networks){
-  combined_network <- list()
-  for (i in networks){
-    combined_network$nodes <- rbind(combined_network$nodes, i$nodes)
-    combined_network$edges <- rbind(combined_network$edges, i$edges)
-  }
-  common_nodes <- combined_network$nodes$id[duplicated(combined_network$nodes$id)]
-  
-  for (node in common_nodes){
-    combined_network$nodes[combined_network$nodes$id == node,]$group <- 
-      paste(unique(combined_network$nodes[combined_network$nodes$id == node,]$group), collapse = ",")
-  }
-  combined_network$nodes <- unique(combined_network$nodes)
-  combined_network$edges <- unique(combined_network$edges)
-  combined_network
-}
-
 
 is.decimal <- function(x){
   if (is.numeric(x)){
