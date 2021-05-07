@@ -16,13 +16,13 @@
 ## ---------------------------
 
 library(shiny)
-library(tidyverse)
+library(tidyverse) ## dplyr
 library(magrittr)
 library(igraph)
-library(matrixcalc)
-library(MASS)
-library(diffusr)
-library(Matrix)
+library(matrixcalc) ## Charlie will write a function
+library(MASS) ## I don't think we need this
+library(diffusr) ## We do NOT need this
+library(Matrix) ## I don't think we need this
 library(KEGGREST)
 library(DT)
 library(readxl)
