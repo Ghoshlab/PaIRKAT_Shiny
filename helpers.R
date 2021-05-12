@@ -1,39 +1,11 @@
-###############################
-##
-## Project: MetaboGuru
-##
-## Purpose: Shiny app helper functions
-##
-## Author: Charlie Carpenter
-## Email: charles.carpenter@cuanschutz.edu
-##
-## Date Created: 2020-08-11
-##
-## ---------------------------
-## Notes:
-##   Get pdat from pathList
-##   sapply getNetwork
-##   sapply kernelTest
-## ---------------------------
-
 # Helpful functions
 `%nin%` <- Negate(`%in%`)
-
-# pkgs <- c("tidyverse", "magrittr", "igraph", "matrixcalc",
-#           "MASS", "diffusr", "Matrix", "KEGGREST")
-# 
-# suppressMessages(lapply(pkgs, library, character.only = T))
 
 ########## Data Set Up #############
 
 # pathVar = "KEGG",
 getNetworks <- function(pathDat, metab, database = "KEGG", 
                         pdat, pathCol, pathID){
-  
-  # pathVar <- as.character(pathVar)  pathVar,
-  # pdat <- pathList(pathDat, database, min.size)
-  
-  # pathVar, 
   
   networks <- lapply(pdat$testPaths$keggPath,
                      getNetwork, .comps = pdat$comps, 
@@ -339,11 +311,11 @@ count_nets <- function(network){
 
 # check if any nodes are common to at least any 2 groups and then combine group names to create a unique list of nodes
 
-is.decimal <- function(x){
-  if (is.numeric(x)){
-    mod(sum(x[1:3]),1) != 0
-  }
-  else{
-    FALSE
-  }
-}
+# is.decimal <- function(x){
+#   if (is.numeric(x)){
+#     mod(sum(x[1:3]),1) != 0
+#   }
+#   else{
+#     FALSE
+#   }
+# }
