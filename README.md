@@ -1,6 +1,8 @@
 # PaIRKAT (Shiny)
 R Shiny app interface for PaIRKAT algorithm
 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Ghoshlab/PaIRKAT_Shiny/HEAD?urlpath=shiny/app)
+
 PaIRKAT is model framework for assessing statistical relationships between networks of metabolites (pathways) and clinical outcome. PaIRKAT queries the KEGG database to determine interactions between metabolites from which network connectivity is constructed.
 
 # Use
