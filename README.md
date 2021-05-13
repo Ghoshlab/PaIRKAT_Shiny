@@ -1,6 +1,8 @@
 # PaIRKAT (Shiny)
 R Shiny app interface for PaIRKAT algorithm
 
+A hosted instance of the application is available through Binder. 
+
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/Ghoshlab/PaIRKAT_Shiny/main?urlpath=shiny/app/)
 
 PaIRKAT is model framework for assessing statistical relationships between networks of metabolites (pathways) and clinical outcome. PaIRKAT queries the KEGG database to determine interactions between metabolites from which network connectivity is constructed.
@@ -25,7 +27,6 @@ Visual tools to explore the results of PaIRKAT analysis. There are two tools pro
 1. Network Graph: This tool allows you to view significant pathways and their connectivity both within and between pathways. Many options are available to color and size nodes to better emphasize features of the network.
 2. Plot Builder: This flexible tool allows you to make plots using any of the information entered into the application or derived from its functions.
     
-    
 # Methods
 
 PaIRKAT is a tool for improving testing power on high dimensional data by including graph topography in the kernel machine regression setting. Studies on high dimensional data can struggle to include the complex relationships between variables. The semi-parametric kernel machine regression model is a powerful tool for capturing these types of relationships. They provide a framework for testing for relationships between outcomes of interest and high dimensional data such as metabolomic, genomic, or proteomic pathways. We propose PaIRKAT, a method for including known biological connections between high dimensional variables into the kernel machine by representing them as edges of 'graphs' or 'networks.' It is common for nodes (e.g. metabolites) to be disconnected from all others within the graph, which leads to meaningful decreases in testing power whether or not the graph information is included. We include a graph regularization or 'smoothing' approach for managing this issue.
@@ -33,9 +34,7 @@ PaIRKAT is a tool for improving testing power on high dimensional data by includ
 # Citation
 
 PaIRKAT: A pathway integrated regression-based kernel association test with applications to metabolomics and COPD phenotypes 
-
 Charlie M. Carpenter, Weiming Zhang, Lucas Gillenwater, Cameron Severn, Tusharkanti Ghosh, Russel Bowler, Katerina Kechris, Debashis Ghosh 
-
 bioRxiv 2021.04.23.440821; doi: https://doi.org/10.1101/2021.04.23.440821
 
 # Acknowledgements
