@@ -9,9 +9,9 @@ PaIRKAT is model framework for assessing statistical relationships between netwo
 ## Upload Data
 Three datasets are required to use PaIRKAT
 
-    1. Clinical Data: Contains clinical outcomes of interest and any meaningful covariates to be adjusted for. Rows should be subjects and columns should be variables.
-    2. Metabolite Measurements: Contains measurments of metabolites for all subjects. Rows should be subjects and columns should be metabolite names. One column should have subject IDs matching subject IDs in clinical data.
-    3. Pathway Data: Contains linkage data and pathway information. Rows are metabolites and columns are variables. Should contain a column with KEGG IDs.
+1. Clinical Data: Contains clinical outcomes of interest and any meaningful covariates to be adjusted for. Rows should be subjects and columns should be variables.
+2. Metabolite Measurements: Contains measurments of metabolites for all subjects. Rows should be subjects and columns should be metabolite names. One column should have subject IDs matching subject IDs in clinical data.
+3. Pathway Data: Contains linkage data and pathway information. Rows are metabolites and columns are variables. Should contain a column with KEGG IDs.
 
 ## Gather Pathways
 The Gather Pathways tab will guide you though defining data linkage logic and querying the KEGG database to collect pathway information and form networks of metabolites.
@@ -22,8 +22,8 @@ Define outcome of interest and clinical covaraites to control for. Output from t
 ## Explore Results
 Visual tools to explore the results of PaIRKAT analysis. There are two tools provided with PaIRKAT.
 
-    1. Network Graph: This tool allows you to view significant pathways and their connectivity both within and between pathways. Many options are available to color and size nodes to better emphasize features of the network.
-    2. Plot Builder: This flexible tool allows you to make plots using any of the information entered into the application or derived from its functions.
+1. Network Graph: This tool allows you to view significant pathways and their connectivity both within and between pathways. Many options are available to color and size nodes to better emphasize features of the network.
+2. Plot Builder: This flexible tool allows you to make plots using any of the information entered into the application or derived from its functions.
     
     
 # Methods
