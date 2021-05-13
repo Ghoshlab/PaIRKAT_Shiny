@@ -33,7 +33,9 @@ PaIRKAT is a tool for improving testing power on high dimensional data by includ
 # Citation
 
 PaIRKAT: A pathway integrated regression-based kernel association test with applications to metabolomics and COPD phenotypes 
+
 Charlie M. Carpenter, Weiming Zhang, Lucas Gillenwater, Cameron Severn, Tusharkanti Ghosh, Russel Bowler, Katerina Kechris, Debashis Ghosh 
+
 bioRxiv 2021.04.23.440821; doi: https://doi.org/10.1101/2021.04.23.440821
 
 # Acknowledgements
