@@ -186,6 +186,9 @@ Gaussian_kernel <- function(rho, Z){
 
 # Davies Test -------------------------------------------------------------
 
+# The following code is taken from: https://github.com/jchen1981/SSKAT/blob/main/R/SSKAT.R
+# Manuscript can be found at https://onlinelibrary.wiley.com/doi/abs/10.1002/gepi.21934
+
 #Compute the tail probability of 1-DF chi-square mixtures
 KAT.pval <- function(Q.all, lambda, acc=1e-9,lim=1e6){
   pval = rep(0, length(Q.all))
