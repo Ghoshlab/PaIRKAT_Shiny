@@ -136,7 +136,7 @@ getNetwork <- function(pathId, .comps, .metab, .pathDat,
 ########## Models #############
 
 ## Kernel test including network information through laplacian
-PaIRKAT <- function(G, out.type, Y, model, tau = 1, metab){
+PaIRKAT <- function(formula.H0, data, G, K=NULL, metab, out.type = "C", tau = 1){
   
   varnames <- V(G)$label
   ZZ <- scale(metab[, varnames[varnames %in% names(metab)]] )
@@ -145,14 +145,14 @@ PaIRKAT <- function(G, out.type, Y, model, tau = 1, metab){
   L <- graph.laplacian(G, normalized = T)
   rho <- median(dist(ZZ))
   Z <- ZZ %*% solve(diag(nrow(L)) + tau*L)
-  K <- Gaussian_kernel(rho, Z)
+  if(is.null(K)) K <- Gaussian_kernel(rho, Z)
   
   if(out.type == "C"){
-    pp <- kernelScoreC(K, Y=as.matrix(Y), X=model)
+    pp <- SKAT.c(formula.H0, data = data, K = K)
   }
   
   if(out.type == "D"){
-    pp <- kernelScoreD(K, Y=as.matrix(Y), X=model)
+    pp <- SKAT.b(formula.H0, data = data, K = K)
   }
   
   pp
@@ -210,6 +210,144 @@ Gaussian_kernel <- function(rho, Z){
   exp(-(1/rho)*as.matrix(dist(Z, method = "euclidean", upper = T)^2))
 }
 
+# Davies Test -------------------------------------------------------------
+
+#Compute the tail probability of 1-DF chi-square mixtures
+KAT.pval <- function(Q.all, lambda, acc=1e-9,lim=1e6){
+  pval = rep(0, length(Q.all))
+  i1 = which(is.finite(Q.all))
+  for(i in i1){
+    tmp <- davies(Q.all[i],lambda,acc=acc,lim=lim)
+    pval[i] = tmp$Qq
+    
+    if(tmp$ifault>0) warning(paste("ifault =", tmp$ifault))
+    # pval[i] = Sadd.pval(Q.all[i],lambda)
+  }
+  return(pval)
+}
+
+SKAT.c <- function(formula.H0, data = NULL, K, adjusted = T,
+                   acc = 0.00001, lim = 10000, tol = 1e-10) {
+  
+  m0 <- lm(formula.H0, data)
+  mX <- model.matrix(formula.H0, data)
+  
+  res <- resid(m0); df <- nrow(mX)-ncol(mX)
+  s2 <- sum(res^2)/df
+  
+  P0  <- diag(nrow(mX)) - mX %*% (solve(t(mX) %*% mX) %*% t(mX))
+  PKP <- P0 %*% K %*% P0
+  
+  if(adjusted){
+    q <- as.numeric(res %*% K %*% res /(s2*df))
+    ee <- eigen(PKP - q * P0, symmetric = T)
+    q <- 0 ## Redefining for adjusted stat
+  } else{
+    q <- as.numeric(res %*% K %*% res / s2)
+    ee <- eigen(PKP, symmetric = T) 
+  }
+  
+  lambda <- ee$values[abs(ee$values) >= tol]
+  dav <- davies(q, lambda = sort(lambda, decreasing=T),
+                acc = acc, lim = lim)
+  
+  c(dav, Q.adj=q)
+}
+
+SKAT.b <- function(formula.H0, data = NULL, K, adjusted = T,
+                   acc = 0.00001, lim = 10000, tol = 1e-10) {
+  
+  X1 <- model.matrix(formula.H0, data)
+  lhs <- formula.H0[[2]]
+  y <- eval(lhs, data)
+  
+  y <- factor(y)
+  
+  
+  if (nlevels(y) != 2) {
+    stop('The phenotype is not binary!\n')
+  } else {
+    y <- as.numeric(y) - 1
+  }
+  
+  glmfit <- glm(y ~ X1 - 1, family = binomial)
+  
+  betas <- glmfit$coef
+  mu  <- glmfit$fitted.values
+  eta <- glmfit$linear.predictors
+  res.wk <- glmfit$residuals
+  res <- y - mu
+  
+  w   <- mu * (1-mu)
+  sqrtw <- sqrt(w)
+  
+  adj <- sum((sqrtw * res.wk)^2) 
+  
+  DX12 <- sqrtw * X1
+  
+  qrX <- qr(DX12)
+  Q <- qr.Q(qrX)
+  Q <- Q[, 1:qrX$rank, drop=FALSE]
+  
+  P0 <- diag(nrow(X1)) - Q %*% t(Q)
+  
+  DKD <- tcrossprod(sqrtw) * K
+  tQK <- t(Q) %*% DKD
+  QtQK <- Q %*% tQK 
+  PKP <- DKD - QtQK - t(QtQK) + Q %*% (tQK %*% Q) %*% t(Q)
+  q <- as.numeric(res %*% K %*% res) / adj
+  ee <- eigen(PKP - q * P0, symmetric = T, only.values=T)  		
+  lambda <- ee$values[abs(ee$values) >= tol]
+  
+  p.value <- KAT.pval(0, lambda=sort(lambda, decreasing = T), acc = acc, lim = lim) 
+  
+  return(list(p.value=p.value, Q.adj = q))
+}
+
+# Univariate Test ---------------------------------------------------------
+
+## modeling 1 metabolite at a time
+metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
+  
+  V.labs <- lapply(sig.net$networks, function(G) V(G)$label)
+  varnames <- unique(unlist(V.labs))
+  ZZ <- metab[, varnames[varnames %in% names(metab)]]
+  
+  metab.lm <- data.frame(Estimate = numeric(),
+                         `Std. Error` = numeric(),
+                         `t value` = numeric(),
+                         pVal = numeric())
+  
+  for(i in 1:ncol(ZZ)){
+    dd <- data.frame(Y, clinDat, ZZ[,i])
+    
+    names(dd)[length(names(dd))] <- colnames(ZZ)[i]
+    fp <- paste(colnames(dd)[1],
+                paste(.formula, paste0("`",names(ZZ)[i],"`"), sep = "+")[2], sep = "~")
+    
+    .form <- as.formula(fp)
+    
+    if(out.type == "C"){
+      mMod <- lm(.form, data = dd)
+    } 
+    if(out.type == "D") {
+      mMod <- glm(.form, data = dd, family = binomial())
+    }
+    cf <- coef(summary(mMod))
+    
+    metab.lm[i, ] <- cf[nrow(cf), ]
+    
+    
+  }
+  metab.lm$metab <- names(ZZ)
+  metab.lm$FDR.pVal <- p.adjust(metab.lm$pVal, method = "BH")
+  metab.lm$neg.log10.FDR.pVal <- -log10(metab.lm$FDR.pVal)
+  metab.lm$estimate_sign <- ifelse(metab.lm$Estimate > 0, "Positive","Negative")
+  metab.lm
+}
+
+# Old Saterthwaitte Code --------------------------------------------------
+
 ## Calculates scale param "ka" (kappa) and df "nu"
 scaleChi <- function(P, K){ 
   ## Pieces of Itilde
@@ -261,47 +399,6 @@ kernelScoreD <- function(K, Y, X){
   out <- c(Q = Q, pVal = pVal, s_chi['ka'], s_chi['nu'])
   out
 }
-
-## modeling 1 metabolite at a time
-metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
-  
-  V.labs <- lapply(sig.net$networks, function(G) V(G)$label)
-  varnames <- unique(unlist(V.labs))
-  ZZ <- metab[, varnames[varnames %in% names(metab)]]
-  
-  metab.lm <- data.frame(Estimate = numeric(),
-                         `Std. Error` = numeric(),
-                         `t value` = numeric(),
-                         pVal = numeric())
-  
-  for(i in 1:ncol(ZZ)){
-    dd <- data.frame(Y, clinDat, ZZ[,i])
-    
-    names(dd)[length(names(dd))] <- colnames(ZZ)[i]
-    fp <- paste(colnames(dd)[1],
-                paste(.formula, paste0("`",names(ZZ)[i],"`"), sep = "+")[2], sep = "~")
-    
-    .form <- as.formula(fp)
-    
-    if(out.type == "C"){
-      mMod <- lm(.form, data = dd)
-    } 
-    if(out.type == "D") {
-      mMod <- glm(.form, data = dd, family = binomial())
-    }
-    cf <- coef(summary(mMod))
-    
-    metab.lm[i, ] <- cf[nrow(cf), ]
-    
-    
-  }
-  metab.lm$metab <- names(ZZ)
-  metab.lm$FDR.pVal <- p.adjust(metab.lm$pVal, method = "BH")
-  metab.lm$neg.log10.FDR.pVal <- -log10(metab.lm$FDR.pVal)
-  metab.lm$estimate_sign <- ifelse(metab.lm$Estimate > 0, "Positive","Negative")
-  metab.lm
-}
-
 
 ########## Plotting #############
 
