@@ -1,0 +1,18 @@
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - r-base=4.0
+  - r-dt
+  - r-ggnetwork
+  - r-ggplot2
+  - r-ggrepel
+  - r-igraph
+  - r-latex2exp
+  - r-rcolorbrewer
+  - r-colourpicker
+  - r-shiny
+  - r-shinybs
+  - r-dplyr
+  - r-vroom
+  - bioconductor-keggrest

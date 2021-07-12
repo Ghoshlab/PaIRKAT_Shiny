@@ -1,39 +1,11 @@
-###############################
-##
-## Project: MetaboGuru
-##
-## Purpose: Shiny app helper functions
-##
-## Author: Charlie Carpenter
-## Email: charles.carpenter@cuanschutz.edu
-##
-## Date Created: 2020-08-11
-##
-## ---------------------------
-## Notes:
-##   Get pdat from pathList
-##   sapply getNetwork
-##   sapply kernelTest
-## ---------------------------
-
 # Helpful functions
 `%nin%` <- Negate(`%in%`)
-
-pkgs <- c("tidyverse", "magrittr", "igraph", "matrixcalc",
-          "MASS", "diffusr", "Matrix", "KEGGREST")
-
-suppressMessages(lapply(pkgs, library, character.only = T))
 
 ########## Data Set Up #############
 
 # pathVar = "KEGG",
 getNetworks <- function(pathDat, metab, database = "KEGG", 
                         pdat, pathCol, pathID){
-  
-  # pathVar <- as.character(pathVar)  pathVar,
-  # pdat <- pathList(pathDat, database, min.size)
-  
-  # pathVar, 
   
   networks <- lapply(pdat$testPaths$keggPath,
                      getNetwork, .comps = pdat$comps, 
@@ -54,11 +26,13 @@ getNetworks <- function(pathDat, metab, database = "KEGG",
 }
 
 # pathVar,
-pathList <- function(pathDat, database = "KEGG", min.size){
+pathList <- function(pathDat, database = "KEGG", min.size, organism = "hsa"){
+  species_lookup <- as.data.frame(keggList("organism")[,2:3])
+  species_name <- species_lookup[species_lookup$organism == organism,2]
   
   if(database == "KEGG"){
     .cr <- keggLink("compound", "reaction")
-    hsapath <- unique(keggLink("pathway", "hsa"))
+    hsapath <- unique(keggLink("pathway", species))
   } 
   
   cr <- substr(.cr, 5, nchar(.cr))
@@ -76,7 +50,7 @@ pathList <- function(pathDat, database = "KEGG", min.size){
   results$inpathway <- sapply(comp, function(co) sum(compId %in% co))
   
   testPaths <- results[results$inpathway >= min.size, ]
-  co <- sub(" - Homo sapiens (human)", "",
+  co <- sub(paste(" -", species_name), "",
             compNames[names(compNames) %in% testPaths$keggPath],
             fixed = T)
   
@@ -196,12 +170,12 @@ getLaplacian <- function(path_id, metabo2, tau){
 formula_fun <- function(covs){
   cc <- character(0)
   if (length(covs) > 1){
-    for(i in 2:length(covs)) cc <- paste(cc, covs[i], sep = "+")
-    formula( paste0("~ ", covs[1], cc) )  ## pasting for final formula
+    for(i in 2:length(covs)) cc <- paste(cc, paste0("`",covs[i],"`"), sep = "+")
+    formula( paste0("~ ", paste0("`",covs[1],"`"), cc) )  ## pasting for final formula
   } else if (length(covs) == 1){
-    formula(paste("~",covs))
+    formula(paste("~",paste0("`",covs,"`")))
   } else{
-    NULL
+    formula(paste("~ 1"))
   }
   
 }
@@ -308,7 +282,6 @@ SKAT.b <- function(formula.H0, data = NULL, K, adjusted = T,
 
 ## modeling 1 metabolite at a time
 metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
-  
   V.labs <- lapply(sig.net$networks, function(G) V(G)$label)
   varnames <- unique(unlist(V.labs))
   ZZ <- metab[, varnames[varnames %in% names(metab)]]
@@ -318,15 +291,16 @@ metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
                          `t value` = numeric(),
                          pVal = numeric())
   
+  
   for(i in 1:ncol(ZZ)){
-    dd <- data.frame(Y, clinDat, ZZ[,i])
+    #dd <- data.frame(Y, clinDat, ZZ[,i])
+    dd <- tibble(Y, clinDat, ZZ[,i], .name_repair = "minimal")
     
     names(dd)[length(names(dd))] <- colnames(ZZ)[i]
     fp <- paste(colnames(dd)[1],
                 paste(.formula, paste0("`",names(ZZ)[i],"`"), sep = "+")[2], sep = "~")
     
     .form <- as.formula(fp)
-    
     if(out.type == "C"){
       mMod <- lm(.form, data = dd)
     } 
@@ -334,9 +308,7 @@ metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
       mMod <- glm(.form, data = dd, family = binomial())
     }
     cf <- coef(summary(mMod))
-    
     metab.lm[i, ] <- cf[nrow(cf), ]
-    
     
   }
   metab.lm$metab <- names(ZZ)
@@ -424,8 +396,8 @@ rename_network_vertices <- function(networks){
 # convert igraph to visNetwork object
 
 convert_network <- function(network){
-  n <- toVisNetworkData(network[[1]])
-  n$nodes$group <- names(network[1])
+  n <- ggnetwork(network[[1]])
+  n$pathway <- names(network[1])
   n
 }
 
@@ -436,29 +408,11 @@ count_nets <- function(network){
 
 # check if any nodes are common to at least any 2 groups and then combine group names to create a unique list of nodes
 
-combine_networks <- function(networks){
-  combined_network <- list()
-  for (i in networks){
-    combined_network$nodes <- rbind(combined_network$nodes, i$nodes)
-    combined_network$edges <- rbind(combined_network$edges, i$edges)
-  }
-  common_nodes <- combined_network$nodes$id[duplicated(combined_network$nodes$id)]
-  
-  for (node in common_nodes){
-    combined_network$nodes[combined_network$nodes$id == node,]$group <- 
-      paste(unique(combined_network$nodes[combined_network$nodes$id == node,]$group), collapse = ",")
-  }
-  combined_network$nodes <- unique(combined_network$nodes)
-  combined_network$edges <- unique(combined_network$edges)
-  combined_network
-}
-
-
-is.decimal <- function(x){
-  if (is.numeric(x)){
-    mod(sum(x[1:3]),1) != 0
-  }
-  else{
-    FALSE
-  }
-}
+# is.decimal <- function(x){
+#   if (is.numeric(x)){
+#     mod(sum(x[1:3]),1) != 0
+#   }
+#   else{
+#     FALSE
+#   }
+# }
