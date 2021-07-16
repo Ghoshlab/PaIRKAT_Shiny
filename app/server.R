@@ -247,7 +247,7 @@ server <- function(input, output, session) {
       pKat.rslt$pValueFDR <- p.adjust(pKat.rslt$pValue, method = "BH")
       
       ## Fixing 0s for log transform
-      pKat.rslt$pValueFDR[pKat.rslt$pValueFDR == 0] <- 1e-16
+      pKat.rslt$pValueFDR[pKat.rslt$pValueFDR == 0] <- 0.0001
       pKat.rslt$neg.log10.FDR.pValue <- -log10(pKat.rslt$pValueFDR)
       
       ## Linear model of single metabolites
