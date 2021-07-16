@@ -213,15 +213,13 @@ server <- function(input, output, session) {
         }, "Dichotomous outcome values should be 0 and 1")
       )
       ## Ordering both data sets by input subject id
-      c.ord <- order(clinDat()[[input$SID]])
-      m.ord <- order(metabDat()[[input$SID]])
+      c.ord <- order(clinDat()[,input$SID])
+      m.ord <- order(metabDat()[,input$SID])
+      
       if(is.null(input$X)){
-        .formula <- '~ 1'
-        mm <- matrix(1, nrow = nrow(clinDat()))
+        .formula <- formula(paste(input$Y, '~ 1'))
       } else{
-        .formula <- suppressWarnings(formula_fun(input$X))
-        mm <- model.matrix(.formula, 
-                           data = clinDat()[c.ord, ])
+        .formula <- formula_fun(input$Y, input$X)
       }
       npath <- nrow(networks()$pdat$testPaths)
       pKat.rslt <- data.frame(Pathway = character(npath),
@@ -230,22 +228,28 @@ server <- function(input, output, session) {
                               pValue = numeric(npath))
       set.seed(input$seed)
       withProgress(message = 'Running PaIRKAT', value = 0, {
-        for (i in 1:npath) {
-          z <- PaIRKAT(G = networks()$networks[[i]],
-                       out.type = input$outType,
-                       Y = clinDat()[c.ord, input$Y], model = mm,
-                       tau = input$tau, metab = metabDat()[m.ord, ])
+        for (i in 1:npath){
+          z <- PaIRKAT(formula.H0 = .formula, data = clinDat()[c.ord, ],
+                       G = networks()$networks[[i]], metab = metabDat()[m.ord, ],
+                       out.type = input$outType, tau = input$tau)
+          
           pKat.rslt[i,] <- c(networks()$pdat$testPaths$pathwayNames[i],
                              networks()$pdat$testPaths$inpathway[i],
-                             z['Q'], z['pVal'], z['ka'], z['nu'])
+                             z$Q.adj, z$p.value)
+          
           incProgress(1/npath,
                       message = "Running PaIRKAT",
                       detail = paste("Completed",
                                      networks()$pdat$testPaths$pathwayNames[i]))
         }
       })
+      
       pKat.rslt$pValueFDR <- p.adjust(pKat.rslt$pValue, method = "BH")
+      
+      ## Fixing 0s for log transform
+      pKat.rslt$pValueFDR[pKat.rslt$pValueFDR == 0] <- 1e-16
       pKat.rslt$neg.log10.FDR.pValue <- -log10(pKat.rslt$pValueFDR)
+      
       ## Linear model of single metabolites
       sig.path <- pKat.rslt$pValueFDR < input$alpha
       validate(
@@ -253,9 +257,9 @@ server <- function(input, output, session) {
       )
       sig.net <- list(networks = networks()$networks[sig.path],
                       testPaths = networks()$pdat$testPaths[sig.path,])
-      metab.lm <- metabMod(sig.net, Y = clinDat()[c.ord, input$Y],
-                           clinDat = clinDat()[c.ord, ], metab =  metabDat()[m.ord, ],
-                           .formula = .formula, out.type = input$outType)
+      metab.lm <- metabMod(sig.net, formula.H0 = .formula,
+                           data = clinDat()[c.ord, ], metab =  metabDat()[m.ord, ],
+                           out.type = input$outType)
       pKat.rslt$Pathway.Size <- as.numeric(pKat.rslt$Pathway.Size)
       pKat.rslt$Score.Statistic <- as.numeric(pKat.rslt$Score.Statistic)
       metab.lm <- merge(metab.lm, pathDat(), by.x = "metab", by.y = input$pathCol)

@@ -122,11 +122,11 @@ PaIRKAT <- function(formula.H0, data, G, K=NULL, metab, out.type = "C", tau = 1)
   if(is.null(K)) K <- Gaussian_kernel(rho, Z)
   
   if(out.type == "C"){
-    pp <- SKAT.c(formula.H0, data = data, K = K)
+    pp <- SKAT.c(formula.H0, .data = data, K = K)
   }
   
   if(out.type == "D"){
-    pp <- SKAT.b(formula.H0, data = data, K = K)
+    pp <- SKAT.b(formula.H0, .data = data, K = K)
   }
   
   pp
@@ -167,17 +167,16 @@ getLaplacian <- function(path_id, metabo2, tau){
 }
 
 ## Function for making formula from "..." in functions
-formula_fun <- function(covs){
+formula_fun <- function(Y, covs){
   cc <- character(0)
   if (length(covs) > 1){
-    for(i in 2:length(covs)) cc <- paste(cc, paste0("`",covs[i],"`"), sep = "+")
-    formula( paste0("~ ", paste0("`",covs[1],"`"), cc) )  ## pasting for final formula
+    ff <- paste("~", paste(paste0("`", covs,"`"), collapse = "+"))
   } else if (length(covs) == 1){
-    formula(paste("~",paste0("`",covs,"`")))
+    ff <- paste("~", paste0("`", covs,"`"))
   } else{
-    formula(paste("~ 1"))
+    ff <- "~ 1"
   }
-  
+  paste(Y, ff)
 }
 
 Gaussian_kernel <- function(rho, Z){
@@ -203,40 +202,35 @@ KAT.pval <- function(Q.all, lambda, acc=1e-9,lim=1e6){
   return(pval)
 }
 
-SKAT.c <- function(formula.H0, data = NULL, K, adjusted = T,
+SKAT.c <- function(formula.H0, .data = NULL, K,
                    acc = 0.00001, lim = 10000, tol = 1e-10) {
   
-  m0 <- lm(formula.H0, data)
-  mX <- model.matrix(formula.H0, data)
+  formula.H0 <- formula(formula.H0)
+  m0 <- lm(formula.H0, data=.data)
+  mX <- model.matrix(formula.H0, data=.data)
   
   res <- resid(m0); df <- nrow(mX)-ncol(mX)
   s2 <- sum(res^2)/df
   
   P0  <- diag(nrow(mX)) - mX %*% (solve(t(mX) %*% mX) %*% t(mX))
   PKP <- P0 %*% K %*% P0
+  q <- as.numeric(res %*% K %*% res / s2)
   
-  if(adjusted){
-    q <- as.numeric(res %*% K %*% res /(s2*df))
-    ee <- eigen(PKP - q * P0, symmetric = T)
-    q <- 0 ## Redefining for adjusted stat
-  } else{
-    q <- as.numeric(res %*% K %*% res / s2)
-    ee <- eigen(PKP, symmetric = T) 
-  }
-  
+  ee <- eigen(PKP - q * P0, symmetric = T) 
   lambda <- ee$values[abs(ee$values) >= tol]
-  dav <- davies(q, lambda = sort(lambda, decreasing=T),
-                acc = acc, lim = lim)
   
-  c(dav, Q.adj=q)
+  p.value <- KAT.pval(0, lambda=sort(lambda, decreasing=T), acc = acc, lim = lim)
+  
+  return(list(p.value=p.value, Q.adj=q))
 }
 
-SKAT.b <- function(formula.H0, data = NULL, K, adjusted = T,
+SKAT.b <- function(formula.H0, .data = NULL, K,
                    acc = 0.00001, lim = 10000, tol = 1e-10) {
   
-  X1 <- model.matrix(formula.H0, data)
+  formula.H0 <- formula(formula.H0)
+  X1 <- model.matrix(formula.H0, .data)
   lhs <- formula.H0[[2]]
-  y <- eval(lhs, data)
+  y <- eval(lhs, .data)
   
   y <- factor(y)
   
@@ -281,10 +275,83 @@ SKAT.b <- function(formula.H0, data = NULL, K, adjusted = T,
   return(list(p.value=p.value, Q.adj = q))
 }
 
+# Saddle pVal functions ---------------------------------------------------
+
+saddle = function(x,lambda){
+  d = max(lambda)
+  lambda = lambda/d
+  x = x/d
+  k0 = function(zeta) -sum(log(1-2*zeta*lambda))/2
+  kprime0 = function(zeta) sapply(zeta, function(zz) sum(lambda/(1-2*zz*lambda)))
+  kpprime0 = function(zeta) 2*sum(lambda^2/(1-2*zeta*lambda)^2)
+  n = length(lambda)
+  if (any(lambda < 0)) {
+    lmin = max(1/(2 * lambda[lambda < 0])) * 0.99999
+  } else if (x>sum(lambda)){
+    lmin = -0.01
+  } else {
+    lmin = -length(lambda)/(2*x)
+  }
+  lmax = min(1/(2*lambda[lambda>0])) * 0.99999
+  hatzeta = uniroot(function(zeta) kprime0(zeta) - x, lower = lmin, upper = lmax, tol = 1e-08)$root
+  w = sign(hatzeta)*sqrt(2*(hatzeta * x-k0(hatzeta)))
+  v = hatzeta*sqrt(kpprime0(hatzeta))
+  if(abs(hatzeta)<1e-4){
+    return(NA)
+  } else{
+    return( pnorm(w+log(v/w)/w, lower.tail=FALSE) )
+  }
+}
+
+Liu.pval = function(Q, lambda){
+  c1 = rep(0,4); for(i in 1:4){ c1[i] = sum(lambda^i) }
+  muQ = c1[1];  sigmaQ = sqrt(2 *c1[2])
+  s1 = c1[3]/c1[2]^(3/2);  s2 = c1[4]/c1[2]^2
+  if(s1^2 > s2){
+    a = 1/(s1 - sqrt(s1^2 - s2));  d = s1 *a^3 - a^2;  l = a^2 - 2*d
+  } else {
+    l = 1/s2;  a = sqrt(l);  d = 0
+  }
+  muX = l+d;  sigmaX = sqrt(2)*a
+  
+  Q.Norm = (Q - muQ)/sigmaQ
+  Q.Norm1 = Q.Norm*sigmaX + muX
+  pchisq(Q.Norm1, df = l,ncp=d, lower.tail=FALSE)
+}
+
+Sadd.pval = function(Q.all,lambda){
+  sad = rep(1,length(Q.all))
+  if(sum(Q.all>0)>0){
+    sad[Q.all>0] = sapply(Q.all[Q.all>0],saddle,lambda=lambda)
+  }
+  id = which(is.na(sad))
+  if(length(id)>0){
+    sad[id] = Liu.pval(Q.all[id], lambda)
+  }
+  return(sad)
+}
+
 # Univariate Test ---------------------------------------------------------
 
+sqrt.inv <- function (V2) {
+  eig.obj <- eigen(V2, symmetric = TRUE)
+  vectors <- eig.obj$vectors
+  values <- eig.obj$values
+  ind <- values >= 1e-10
+  values <- values[ind]
+  vectors <- vectors[, ind]
+  
+  temp <- t(vectors) / (values)
+  Vi2 <- vectors  %*% temp
+  
+  temp <- t(vectors) / sqrt(values)
+  Vi <- vectors  %*% temp
+  
+  return(list(Vi = Vi, Vi2 = Vi2, rank = length(values)))
+}
+
 ## modeling 1 metabolite at a time
-metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
+metabMod <- function(sig.net, formula.H0, data, metab, out.type = "C"){
   V.labs <- lapply(sig.net$networks, function(G) V(G)$label)
   varnames <- unique(unlist(V.labs))
   ZZ <- metab[, varnames[varnames %in% names(metab)]]
@@ -294,14 +361,12 @@ metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
                          `t value` = numeric(),
                          pVal = numeric())
   
-  
   for(i in 1:ncol(ZZ)){
     #dd <- data.frame(Y, clinDat, ZZ[,i])
-    dd <- tibble(Y, clinDat, ZZ[,i], .name_repair = "minimal")
+    dd <- tibble(data, ZZ[,i], .name_repair = "minimal")
     
     names(dd)[length(names(dd))] <- colnames(ZZ)[i]
-    fp <- paste(colnames(dd)[1],
-                paste(.formula, paste0("`",names(ZZ)[i],"`"), sep = "+")[2], sep = "~")
+    fp <- paste(formula.H0, paste0("`", names(ZZ)[i],"`"), sep = "+")
     
     .form <- as.formula(fp)
     if(out.type == "C"){
@@ -312,8 +377,8 @@ metabMod <- function(sig.net, Y, clinDat, metab, .formula, out.type = "C"){
     }
     cf <- coef(summary(mMod))
     metab.lm[i, ] <- cf[nrow(cf), ]
-    
   }
+  
   metab.lm$metab <- names(ZZ)
   metab.lm$FDR.pVal <- p.adjust(metab.lm$pVal, method = "BH")
   metab.lm$neg.log10.FDR.pVal <- -log10(metab.lm$FDR.pVal)

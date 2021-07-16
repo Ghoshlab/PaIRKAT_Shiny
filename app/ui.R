@@ -12,6 +12,7 @@ library(latex2exp)
 library(ggrepel)
 library(vroom)
 library(KEGGREST)
+library(CompQuadForm)
 
 source("../helpers.R")
 
