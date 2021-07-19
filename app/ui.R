@@ -85,8 +85,8 @@ ui <- function(request) {
                ),
                tabPanel("Data Input",
                         fillPage(
-                          sidebarPanel(h4("Clinical Data"),
-                                       h6("Clinical variables associated with trial's subjects.
+                          sidebarPanel(h4("Phenotype Data"),
+                                       h6("Phenotype variables associated with trial's subjects.
                    Subject IDs should be the first column."),
                                        fileInput("clin", h6("File Select"), accept = c(".csv")),
                                        
@@ -107,7 +107,7 @@ ui <- function(request) {
                           ),
                           mainPanel(
                             tabsetPanel(
-                              tabPanel("Clinical Data", DT::dataTableOutput("clinTab")),
+                              tabPanel("Phenotype Data", DT::dataTableOutput("clinTab")),
                               tabPanel("Metabolome", DT::dataTableOutput("metabTab")),
                               tabPanel("Pathways", DT::dataTableOutput("pathTab"))
                             )

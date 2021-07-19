@@ -22,7 +22,7 @@ getNetworks <- function(pathDat, metab, database = "KEGG",
   pdat$testPaths <- pdat$testPaths[keepNet, ]
   pdat$comps <- pdat$comps[keepNet]
   
-  return(list(networks = networks, pdat = pdat))
+  return(list(networks = networks, pdat = pdat, pathCol = pathCol))
 }
 
 # pathVar,
@@ -176,7 +176,7 @@ formula_fun <- function(Y, covs){
   } else{
     ff <- "~ 1"
   }
-  paste(Y, ff)
+  paste(paste0("`",Y,"`"), ff)
 }
 
 Gaussian_kernel <- function(rho, Z){
@@ -206,6 +206,8 @@ SKAT.c <- function(formula.H0, .data = NULL, K,
                    acc = 0.00001, lim = 10000, tol = 1e-10) {
   
   formula.H0 <- formula(formula.H0)
+  print("continuous formula")
+  print(formula.H0)
   m0 <- lm(formula.H0, data=.data)
   mX <- model.matrix(formula.H0, data=.data)
   
@@ -228,6 +230,8 @@ SKAT.b <- function(formula.H0, .data = NULL, K,
                    acc = 0.00001, lim = 10000, tol = 1e-10) {
   
   formula.H0 <- formula(formula.H0)
+  print("binary formula")
+  print(formula.H0)
   X1 <- model.matrix(formula.H0, .data)
   lhs <- formula.H0[[2]]
   y <- eval(lhs, .data)
@@ -362,13 +366,24 @@ metabMod <- function(sig.net, formula.H0, data, metab, out.type = "C"){
                          pVal = numeric())
   
   for(i in 1:ncol(ZZ)){
-    #dd <- data.frame(Y, clinDat, ZZ[,i])
     dd <- tibble(data, ZZ[,i], .name_repair = "minimal")
     
     names(dd)[length(names(dd))] <- colnames(ZZ)[i]
-    fp <- paste(formula.H0, paste0("`", names(ZZ)[i],"`"), sep = "+")
+
+    
+    if ("1" %in% as.character(formula.H0)){
+      fp <- paste(as.character(formula.H0)[2],paste0("`", names(ZZ)[i],"`"), sep = "~")
+
+    }
+    else {
+      fp <- paste(formula.H0, paste0("`", names(ZZ)[i],"`"), sep = "+")
+    }
+    
+    
     
     .form <- as.formula(fp)
+    print("univariate formula")
+    print(.form)
     if(out.type == "C"){
       mMod <- lm(.form, data = dd)
     } 

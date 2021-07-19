@@ -178,7 +178,8 @@ server <- function(input, output, session) {
                      compoundReaction = cr)
         #### End of `pathList` function
         nn <- getNetworks(pathDat = pathDat(), metab = metabDat(),
-                          database = input$pathwayDatabase, pdat = pdat,
+                          database = input$pathwayDatabase, 
+                          pdat = pdat,
                           pathCol = as.character(input$pathCol),
                           pathID = .pID)
       })
@@ -204,7 +205,7 @@ server <- function(input, output, session) {
         need(!(input$Y %in% input$X), "The outcome should not be included in covariates."),
         need(!(input$SID %in% input$X), "The subject ID should not be included in covariates."),
         need({
-          if((input$outType == "D" & any(unique(clinDat()[input$Y]) != c(0,1)))){
+          if((input$outType == "D" & length(unique(clinDat()[[input$Y]])) != 2)){
             FALSE
           }
           else{
@@ -216,11 +217,8 @@ server <- function(input, output, session) {
       c.ord <- order(clinDat()[,input$SID])
       m.ord <- order(metabDat()[,input$SID])
       
-      if(is.null(input$X)){
-        .formula <- formula(paste(input$Y, '~ 1'))
-      } else{
-        .formula <- formula_fun(input$Y, input$X)
-      }
+      .formula <- formula_fun(input$Y, input$X)
+      
       npath <- nrow(networks()$pdat$testPaths)
       pKat.rslt <- data.frame(Pathway = character(npath),
                               `Pathway Size` = numeric(npath),
@@ -250,6 +248,8 @@ server <- function(input, output, session) {
       pKat.rslt$pValueFDR[pKat.rslt$pValueFDR == 0] <- 0.0001
       pKat.rslt$neg.log10.FDR.pValue <- -log10(pKat.rslt$pValueFDR)
       
+
+      
       ## Linear model of single metabolites
       sig.path <- pKat.rslt$pValueFDR < input$alpha
       validate(
@@ -257,15 +257,15 @@ server <- function(input, output, session) {
       )
       sig.net <- list(networks = networks()$networks[sig.path],
                       testPaths = networks()$pdat$testPaths[sig.path,])
+      
       metab.lm <- metabMod(sig.net, formula.H0 = .formula,
                            data = clinDat()[c.ord, ], metab =  metabDat()[m.ord, ],
                            out.type = input$outType)
       pKat.rslt$Pathway.Size <- as.numeric(pKat.rslt$Pathway.Size)
       pKat.rslt$Score.Statistic <- as.numeric(pKat.rslt$Score.Statistic)
-      metab.lm <- merge(metab.lm, pathDat(), by.x = "metab", by.y = input$pathCol)
+      metab.lm <- merge(metab.lm, pathDat(), by.x = "metab", by.y = networks()$pathCol)
       pKat.rslt <- pKat.rslt[sig.path,]
       pKat.rslt <- pKat.rslt %>% arrange(desc(neg.log10.FDR.pValue))
-      
       list(pKat.rslt = pKat.rslt, metab.lm = metab.lm, y = input$Y, X = input$X)
     }
     else if (reac$pKatRslt){
@@ -783,7 +783,7 @@ server <- function(input, output, session) {
     req(networks())
     ggplot(data = networks()$networks[[input$plotPath]], aes(x = x, y = y, xend = xend, yend = yend)) +
       geom_edges(color = "black") +
-      geom_nodes(size = 15) +
+      geom_nodes(size = 15, color = "gray") +
       geom_nodetext_repel(aes(label=label), nudge_y = -0.05, force = 2)+
       theme_blank()
   })
