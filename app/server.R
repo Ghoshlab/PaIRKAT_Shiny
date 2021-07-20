@@ -263,7 +263,7 @@ server <- function(input, output, session) {
                            out.type = input$outType)
       pKat.rslt$Pathway.Size <- as.numeric(pKat.rslt$Pathway.Size)
       pKat.rslt$Score.Statistic <- as.numeric(pKat.rslt$Score.Statistic)
-      metab.lm <- merge(metab.lm, pathDat(), by.x = "metab", by.y = input$pathCol)
+      metab.lm <- merge(metab.lm, pathDat(), by.x = "metab", by.y = networks()$pathCol)
       pKat.rslt <- pKat.rslt[sig.path,]
       pKat.rslt <- pKat.rslt %>% arrange(desc(neg.log10.FDR.pValue))
       list(pKat.rslt = pKat.rslt, metab.lm = metab.lm, y = input$Y, X = input$X)
