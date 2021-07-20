@@ -212,7 +212,7 @@ SKAT.c <- function(formula.H0, .data = NULL, K,
   mX <- model.matrix(formula.H0, data=.data)
   
   res <- resid(m0); df <- nrow(mX)-ncol(mX)
-  s2 <- sum(res^2)/df
+  s2 <- sum(res^2) 
   
   P0  <- diag(nrow(mX)) - mX %*% (solve(t(mX) %*% mX) %*% t(mX))
   PKP <- P0 %*% K %*% P0
