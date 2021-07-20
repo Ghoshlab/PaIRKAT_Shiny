@@ -242,10 +242,12 @@ server <- function(input, output, session) {
         }
       })
       
+      pKat.rslt$pValue[pKat.rslt$pValue == 0] <- 1e-9
+      
       pKat.rslt$pValueFDR <- p.adjust(pKat.rslt$pValue, method = "BH")
       
       ## Fixing 0s for log transform
-      pKat.rslt$pValueFDR[pKat.rslt$pValueFDR == 0] <- 0.0001
+      #pKat.rslt$pValueFDR[pKat.rslt$pValueFDR == 0] <- 0.0001
       pKat.rslt$neg.log10.FDR.pValue <- -log10(pKat.rslt$pValueFDR)
       
 

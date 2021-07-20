@@ -15,4 +15,5 @@ dependencies:
   - r-shinybs
   - r-dplyr
   - r-vroom
+  - r-compquadform
   - bioconductor-keggrest
