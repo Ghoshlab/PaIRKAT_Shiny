@@ -35,6 +35,8 @@ ui <- function(request) {
                                     tags$li("Metabolite Measurements: Contains measurments of metabolites for all subjects. Rows should be subjects and columns should be metabolite names. One column should have subject IDs matching subject IDs in phenotype data."),
                                     tags$li("Pathway Data: Contains linkage data and pathway information. Rows are metabolites and columns are variables. Should contain a column with KEGG IDs.")
                                   ),
+                                  p(tags$a(href="https://github.com/Ghoshlab/PaIRKAT_Shiny/raw/main/exampleData/Example_PaIRKAT_Data.zip", 
+                                           "Download Example Data")),
                           ),
                           tags$li("Gather Pathways"),
                           p("The Gather Pathways tab will guide you though defining data linkage logic and querying the KEGG database to collect pathway information and form networks of metabolites."),
@@ -84,7 +86,9 @@ ui <- function(request) {
                ),
                tabPanel("Data Input",
                         fillPage(
-                          sidebarPanel(h4("Phenotype Data"),
+                          sidebarPanel(
+                            
+                            h4("Phenotype Data"),
                                        h6("Phenotype variables associated with trial's subjects.
                    Subject IDs should be the first column."),
                                        fileInput("clin", h6("File Select"), accept = c(".csv")),

@@ -206,8 +206,6 @@ SKAT.c <- function(formula.H0, .data = NULL, K,
                    acc = 0.00001, lim = 10000, tol = 1e-10) {
   
   formula.H0 <- formula(formula.H0)
-  print("continuous formula")
-  print(formula.H0)
   m0 <- lm(formula.H0, data=.data)
   mX <- model.matrix(formula.H0, data=.data)
   
@@ -230,8 +228,6 @@ SKAT.b <- function(formula.H0, .data = NULL, K,
                    acc = 0.00001, lim = 10000, tol = 1e-10) {
   
   formula.H0 <- formula(formula.H0)
-  print("binary formula")
-  print(formula.H0)
   X1 <- model.matrix(formula.H0, .data)
   lhs <- formula.H0[[2]]
   y <- eval(lhs, .data)
@@ -382,8 +378,6 @@ metabMod <- function(sig.net, formula.H0, data, metab, out.type = "C"){
     
     
     .form <- as.formula(fp)
-    print("univariate formula")
-    print(.form)
     if(out.type == "C"){
       mMod <- lm(.form, data = dd)
     } 
