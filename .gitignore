@@ -2,7 +2,4 @@
 .Rhistory
 .RData
 .Ruserdata
-<<<<<<< HEAD
-=======
-rsconnect/
->>>>>>> 9d8e5b6d05534dfaa77931c64367477c8439c41b
+.Rproj
