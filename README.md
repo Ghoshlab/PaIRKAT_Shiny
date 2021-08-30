@@ -11,9 +11,12 @@ PaIRKAT is model framework for assessing statistical relationships between netwo
 ## Upload Data
 Three datasets are required to use PaIRKAT
 
-1. Clinical Data: Contains clinical outcomes of interest and any meaningful covariates to be adjusted for. Rows should be subjects and columns should be variables.
+1. Phenotype Data: Contains outcomes of interest and any meaningful covariates to be adjusted for. Rows should be subjects and columns should be variables.
 2. Metabolite Measurements: Contains measurments of metabolites for all subjects. Rows should be subjects and columns should be metabolite names. One column should have subject IDs matching subject IDs in clinical data.
 3. Pathway Data: Contains linkage data and pathway information. Rows are metabolites and columns are variables. Should contain a column with KEGG IDs.
+
+## Example Data
+Example data to test PaIRKAT are available from `exampleData/Example_PaIRKAT_Data.zip`. This zipped folder contains 3 files which correspond to the 3 datasets detailed above. 
 
 ## Gather Pathways
 The Gather Pathways tab will guide you though defining data linkage logic and querying the KEGG database to collect pathway information and form networks of metabolites.
